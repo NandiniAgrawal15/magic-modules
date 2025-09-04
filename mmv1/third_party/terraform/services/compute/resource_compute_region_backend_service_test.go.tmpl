@@ -1310,7 +1310,7 @@ resource "google_compute_region_backend_service" "foobar" {
   name                  = "%s"
   health_checks         = [google_compute_health_check.health_check.self_link]
   protocol              = "TCP"
-  load_balancing_scheme = "INTERNAL"  
+  load_balancing_scheme = "INTERNAL"
   subsetting {
 	  policy = "CONSISTENT_HASH_SUBSETTING"
   }
@@ -1331,7 +1331,7 @@ resource "google_compute_region_backend_service" "foobar" {
   name                  = "%s"
   health_checks         = [google_compute_health_check.health_check.self_link]
   protocol              = "TCP"
-  load_balancing_scheme = "INTERNAL"  
+  load_balancing_scheme = "INTERNAL"
 }
 
 resource "google_compute_health_check" "health_check" {

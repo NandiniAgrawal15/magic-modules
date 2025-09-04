@@ -164,7 +164,7 @@ resource "google_network_security_security_profile" "security_profile_1" {
 func testAccComputeNetworkFirewallPolicyWithRules_update(context map[string]interface{}) string {
 	return acctest.Nprintf(`
 data "google_project" "project" {
-   provider    = google-beta 
+   provider    = google-beta
 }
 
 resource "google_compute_network_firewall_policy_with_rules" "network-firewall-policy-with-rules" {
@@ -259,5 +259,3 @@ resource "google_network_security_security_profile" "security_profile_1" {
 `, context)
 }
 {{- end }}
-
- 

@@ -104,7 +104,7 @@ func ResourceApigeeKeystoresAliasesKeyCertFile() *schema.Resource {
 										Type:     schema.TypeString,
 										Optional: true,
 										Computed: true,
-										Description: `Flag that specifies whether the certificate is valid. 
+										Description: `Flag that specifies whether the certificate is valid.
 Flag is set to Yes if the certificate is valid, No if expired, or Not yet if not yet valid.`,
 									},
 									"issuer": {

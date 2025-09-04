@@ -445,9 +445,9 @@ The following arguments are supported:
   Configuring Policy Controller through the configmanagement feature is no longer recommended.
   Use the policycontroller feature instead.
 
-    
+
 <a name="nested_binauthz"></a>The `binauthz` block supports:
-    
+
 * `enabled` -
   (Optional)
   Whether binauthz is enabled in this cluster.

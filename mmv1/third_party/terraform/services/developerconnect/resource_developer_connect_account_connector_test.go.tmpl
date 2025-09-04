@@ -142,15 +142,15 @@ func testAccDeveloperConnectAccountConnector_GitlabUpdate(context map[string]int
 resource "google_developer_connect_account_connector" "my-account-connector" {
   location = "us-central1"
   account_connector_id = "tf-test-ac%{random_suffix}"
-  
+
   annotations = {
     "foo": "bar"
   }
-  
+
   labels = {
     "bar": "foo"
   }
-  
+
   provider_oauth_config {
     system_provider_id = "GITLAB"
     scopes = ["api", "read_api"]
@@ -219,11 +219,11 @@ func testAccDeveloperConnectAccountConnector_GoogleUpdate(context map[string]int
 resource "google_developer_connect_account_connector" "my-account-connector" {
   location = "us-central1"
   account_connector_id = "tf-test-ac%{random_suffix}"
-  
+
   annotations = {
     "foo": "bar"
   }
-  
+
   labels = {
     "bar": "foo"
   }
@@ -296,11 +296,11 @@ func testAccDeveloperConnectAccountConnector_SentryUpdate(context map[string]int
 resource "google_developer_connect_account_connector" "my-account-connector" {
   location = "us-central1"
   account_connector_id = "tf-test-ac%{random_suffix}"
-  
+
   annotations = {
     "foo": "bar"
   }
-  
+
   labels = {
     "bar": "foo"
   }
@@ -373,11 +373,11 @@ func testAccDeveloperConnectAccountConnector_RovoUpdate(context map[string]inter
 resource "google_developer_connect_account_connector" "my-account-connector" {
   location = "us-central1"
   account_connector_id = "tf-test-ac%{random_suffix}"
-  
+
   annotations = {
      "foo": "bar"
   }
-  
+
   labels = {
     "bar": "foo"
   }
@@ -450,11 +450,11 @@ func testAccDeveloperConnectAccountConnector_NewRelicUpdate(context map[string]i
 resource "google_developer_connect_account_connector" "my-account-connector" {
   location = "us-central1"
   account_connector_id = "tf-test-ac%{random_suffix}"
-  
+
   annotations = {
      "foo": "bar"
   }
-  
+
   labels = {
     "bar": "foo"
   }
@@ -527,11 +527,11 @@ func testAccDeveloperConnectAccountConnector_DatastaxUpdate(context map[string]i
 resource "google_developer_connect_account_connector" "my-account-connector" {
   location = "us-central1"
   account_connector_id = "tf-test-ac%{random_suffix}"
-  
+
   annotations = {
      "foo": "bar"
   }
-  
+
   labels = {
     "bar": "foo"
   }
@@ -543,5 +543,3 @@ resource "google_developer_connect_account_connector" "my-account-connector" {
 }
 `, context)
 }
-
-

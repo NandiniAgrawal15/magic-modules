@@ -911,7 +911,7 @@ resource "google_storage_transfer_job" "transfer_job" {
     }
 	  repeat_interval = "604800s"
   }
-  
+
   logging_config {
     log_actions      = [
       "COPY",
@@ -1086,7 +1086,7 @@ resource "google_storage_transfer_job" "transfer_job" {
     }
 	  repeat_interval = "604800s"
   }
-  
+
   logging_config {
     log_actions      = [
       "COPY",
@@ -1112,7 +1112,7 @@ func testAccStorageTransferJob_transferJobName(project string, dataSourceBucketN
   data "google_storage_transfer_project_service_account" "default" {
     project = "%s"
   }
-  
+
   resource "google_storage_bucket" "data_source" {
     name          = "%s"
     project       = "%s"
@@ -1120,13 +1120,13 @@ func testAccStorageTransferJob_transferJobName(project string, dataSourceBucketN
     force_destroy = true
     uniform_bucket_level_access = true
   }
-  
+
   resource "google_storage_bucket_iam_member" "data_source" {
     bucket = google_storage_bucket.data_source.name
     role   = "roles/storage.admin"
     member = "serviceAccount:${data.google_storage_transfer_project_service_account.default.email}"
   }
-  
+
   resource "google_storage_bucket" "data_sink" {
     name          = "%s"
     project       = "%s"
@@ -1134,18 +1134,18 @@ func testAccStorageTransferJob_transferJobName(project string, dataSourceBucketN
     force_destroy = true
     uniform_bucket_level_access = true
   }
-  
+
   resource "google_storage_bucket_iam_member" "data_sink" {
     bucket = google_storage_bucket.data_sink.name
     role   = "roles/storage.admin"
     member = "serviceAccount:${data.google_storage_transfer_project_service_account.default.email}"
   }
-  
+
   resource "google_storage_transfer_job" "transfer_job" {
     name        = "transferJobs/%s"
     description = "%s"
     project     = "%s"
-  
+
     transfer_spec {
       gcs_data_source {
         bucket_name = google_storage_bucket.data_source.name
@@ -1156,7 +1156,7 @@ func testAccStorageTransferJob_transferJobName(project string, dataSourceBucketN
         path  = "foo/bar/"
       }
     }
-  
+
     schedule {
       schedule_start_date {
         year  = 2018
@@ -1176,7 +1176,7 @@ func testAccStorageTransferJob_transferJobName(project string, dataSourceBucketN
       }
       repeat_interval = "604800s"
     }
-  
+
     depends_on = [
       google_storage_bucket_iam_member.data_source,
       google_storage_bucket_iam_member.data_sink,
@@ -1361,7 +1361,7 @@ resource "google_storage_transfer_job" "transfer_job" {
       path  = "foo/bar/"
     }
   }
-  
+
   logging_config {
     enable_on_prem_gcs_transfer_logs = true
   }
@@ -1496,7 +1496,7 @@ resource "google_storage_transfer_job" "transfer_job" {
       bucket_name = google_storage_bucket.data_source.name
     }
   }
-  
+
   logging_config {
     enable_on_prem_gcs_transfer_logs = false
   }
@@ -2129,7 +2129,7 @@ resource "google_storage_transfer_job" "transfer_job" {
       last_modified_since = "2020-01-01T00:00:00Z"
       last_modified_before = "2020-01-01T00:00:00Z"
       exclude_prefixes = [
-        "a/b/c", 
+        "a/b/c",
       ]
       include_prefixes = [
         "a/b"
@@ -2215,7 +2215,7 @@ resource "google_storage_transfer_job" "transfer_job" {
       last_modified_since = "2020-01-01T00:00:00Z"
       last_modified_before = "2020-01-01T00:00:00Z"
       exclude_prefixes = [
-        "a/b/c", 
+        "a/b/c",
       ]
       include_prefixes = [
         "a/b"

@@ -906,7 +906,7 @@ func TestAccComposerEnvironmentAirflow2_withSoftwareConfig(t *testing.T) {
 			{
 				ResourceName:      "google_composer_environment.test",
 				ImportState:       true,
- 				ImportStateVerify: true,
+				ImportStateVerify: true,
 			},
 			// This is a terrible clean-up step in order to get destroy to succeed,
 			// due to dangling firewall rules left by the Composer Environment blocking network deletion.
@@ -1617,7 +1617,7 @@ resource "google_composer_environment" "test" {
     private_environment_config {
       enable_private_endpoint = true
       enable_privately_used_public_ips = true
-  	}
+	}
   }
 }
 
@@ -1660,7 +1660,7 @@ resource "google_composer_environment" "test" {
       connection_type = "VPC_PEERING"
       enable_private_endpoint = true
       enable_privately_used_public_ips = true
-  	}
+	}
   }
 }
 

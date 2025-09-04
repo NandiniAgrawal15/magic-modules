@@ -446,7 +446,7 @@ func testAccCheckRedisClusterOnDemandBackup(t *testing.T, resourceName string, b
 		if err != nil {
 			return fmt.Errorf("Error creating on-demand backup for Redis cluster %s: %s", name, err)
 		}
-	    
+
 		// Wait for the operation to complete
 		err = redis.RedisOperationWaitTime(
 			config, res, project, "Creating Redis Cluster Backup", config.UserAgent,

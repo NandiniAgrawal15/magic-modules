@@ -316,13 +316,13 @@ The `azure_credentials` block supports:
 
 <a name="nested_logging_config"></a>The `loggin_config` block supports:
 
-* `log_actions` - (Optional) A list of actions to be logged. If empty, no logs are generated. Not supported for transfers with PosixFilesystem data sources; use enableOnpremGcsTransferLogs instead. 
+* `log_actions` - (Optional) A list of actions to be logged. If empty, no logs are generated. Not supported for transfers with PosixFilesystem data sources; use enableOnpremGcsTransferLogs instead.
 Each action may be one of `FIND`, `DELETE`, and `COPY`.
 
 * `log_action_states` - (Optional) A list of loggable action states. If empty, no logs are generated. Not supported for transfers with PosixFilesystem data sources; use enableOnpremGcsTransferLogs instead.
 Each action state may be one of `SUCCEEDED`, and `FAILED`.
 
-* `enable_on_prem_gcs_transfer` - (Optional) For transfers with a PosixFilesystem source, this option enables the Cloud Storage transfer logs for this transfer. 
+* `enable_on_prem_gcs_transfer` - (Optional) For transfers with a PosixFilesystem source, this option enables the Cloud Storage transfer logs for this transfer.
 Defaults to false.
 
 ## Attributes Reference

@@ -6,11 +6,11 @@ description: |-
 
 # google_storage_bucket_object
 
-Creates a new object inside an existing bucket in Google cloud storage service (GCS). 
+Creates a new object inside an existing bucket in Google cloud storage service (GCS).
 [ACLs](https://cloud.google.com/storage/docs/access-control/lists) can be applied using the `google_storage_object_acl` resource.
- For more information see 
-[the official documentation](https://cloud.google.com/storage/docs/key-terms#objects) 
-and 
+ For more information see
+[the official documentation](https://cloud.google.com/storage/docs/key-terms#objects)
+and
 [API](https://cloud.google.com/storage/docs/json_api/v1/objects).
 
 A datasource can be used to retrieve the data of the stored object:
