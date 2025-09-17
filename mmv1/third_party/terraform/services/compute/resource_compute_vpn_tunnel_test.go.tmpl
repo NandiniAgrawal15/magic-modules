@@ -254,3 +254,79 @@ resource "google_compute_vpn_tunnel" "foobar" {
 }
 `, suffix)
 }
+
+{{- if ne $.TargetVersionName "ga" }}
+func TestAccComputeVpnTunnel_resourceManagerTags(t *testing.T) {
+	t.Parallel()
+	org := envvar.GetTestOrgFromEnv(t)
+	project := envvar.GetTestProjectFromEnv()
+
+	suffixName := acctest.RandString(t, 10)
+	tagKeyResult := acctest.BootstrapSharedTestTagKeyDetails(t, "crm-tunnels-tagkey", "organizations/"+org, make(map[string]interface{}))
+	sharedTagkey,_ := tagKeyResult["shared_tag_key"]
+	tagValueResult := acctest.BootstrapSharedTestTagValueDetails(t, "crm-tunnels-tagvalue", sharedTagkey, org)
+	vpnTunnelName := fmt.Sprintf("tf-test-vpn-tunnel-resource-manager-tags-%s", suffixName)
+	networkName := fmt.Sprintf("tf-test-network-resource-manager-tags-%s-net", suffixName)
+	vpnGatewayName := fmt.Sprintf("tf-test-vpn-gateway-resource-manager-tags-%s", suffixName)
+	addressName := fmt.Sprintf("tf-test-address-resource-manager-tags-%s", suffixName)
+	context := map[string]interface{}{
+		"project": project,
+		"network_name": networkName,
+		"vpn_tunnel_name": vpnTunnelName,
+		"vpn_gateway_name": vpnGatewayName,
+		"address_name": addressName,
+		"tag_key_id": tagKeyResult["name"],
+		"tag_value_id": tagValueResult["name"],
+	}
+
+	acctest.VcrTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderBetaFactories(t),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccComputeVpnTunnel_resourceManagerTags(context),
+			},
+			{
+				ResourceName:      "google_compute_vpn_tunnel.foobar",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{"params"},
+			},
+		},
+	})
+}
+
+func testAccComputeVpnTunnel_resourceManagerTags(context map[string]interface{}) string {
+	return acctest.Nprintf(`
+		resource "google_compute_network" "foobar" {
+			provider = google-beta
+			name = "%{network_name}"
+			auto_create_subnetworks = false
+		}
+
+		resource "google_compute_address" "foobar" {
+			provider = google-beta
+			name = "%{address_name}"
+		}
+
+		resource "google_compute_vpn_gateway" "foobar" {
+			provider = google-beta
+			name = "%{vpn_gateway_name}"
+			network = google_compute_network.foobar.self_link
+		}
+
+		resource "google_compute_vpn_tunnel" "foobar" {
+			provider = google-beta
+			name = "%{vpn_tunnel_name}"
+			peer_ip = "15.0.0.120"
+			shared_secret = "a secret"
+			target_vpn_gateway = google_compute_vpn_gateway.foobar.self_link
+			params {
+				resource_manager_tags = {
+					"%{tag_key_id}" = "%{tag_value_id}"
+				}
+			}
+		}
+		`, context)
+}
+{{- end }}
