@@ -54,6 +54,12 @@ examples:
     vars:
       interconnect_name: 'example-interconnect'
     exclude_docs: true
+  - name: 'compute_interconnect_resource_manager_tags_test'
+    primary_resource_id: 'example-interconnect'
+    vars:
+      interconnect_name: 'example-interconnect'
+    exclude_docs: true
+    exclude_test: true
 parameters:
 properties:
   - name: 'description'
@@ -452,6 +458,21 @@ properties:
     is_set: true
     item_type:
       type: String
+  - name: 'params'
+    type: NestedObject
+    ignore_read: true
+    immutable: true
+    description: |
+     Additional params passed with the request, but not persisted as part of resource payload
+    properties:
+      - name: 'resourceManagerTags'
+        type: KeyValuePairs
+        description: |
+          Resource manager tags to be bound to the interconnect. Tag keys and values have the
+          same definition as resource manager tags. Keys must be in the format tagKeys/{tag_key_id},
+          and values are in the format tagValues/456.
+        api_name: resourceManagerTags
+        ignore_read: true
   - name: 'aaiEnabled'
     type: Boolean
     description: |

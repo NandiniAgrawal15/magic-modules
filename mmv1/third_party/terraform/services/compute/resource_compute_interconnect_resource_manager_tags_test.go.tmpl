@@ -1,0 +1,68 @@
+package compute_test
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-provider-google/google/acctest"
+	"github.com/hashicorp/terraform-provider-google/google/envvar"
+)
+
+func TestAccComputeInterconnect_resourceManagerTags(t *testing.T) {
+	t.Parallel()
+	org := envvar.GetTestOrgFromEnv(t)
+
+	suffixName := acctest.RandString(t, 10)
+	tagKeyResult := acctest.BootstrapSharedTestTagKeyDetails(t, "crm-interconnect-tagkey", "organizations/"+org, make(map[string]interface{}))
+	sharedTagkey,_ := tagKeyResult["shared_tag_key"]
+	tagValueResult := acctest.BootstrapSharedTestTagValueDetails(t, "crm-interconnect-tagvalue", sharedTagkey, org)
+	interconnectName := fmt.Sprintf("tf-test-interconnect-resource-manager-tags-%s", suffixName)
+	context := map[string]interface{}{
+		"interconnect_name": interconnectName,
+		"tag_key_id": tagKeyResult["name"],
+		"tag_value_id": tagValueResult["name"],
+	}
+
+	acctest.VcrTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
+		CheckDestroy:             testAccCheckComputeInterconnectDestroyProducer(t),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccComputeInterconnect_resourceManagerTags(context),
+			},
+			{
+				ResourceName:      "google_compute_interconnect.foobar",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{"params"},
+			},
+		},
+	})
+}
+
+func testAccComputeInterconnect_resourceManagerTags(context map[string]interface{}) string {
+	return acctest.Nprintf(`
+		data "google_project" "project" {}
+
+		resource "google_compute_interconnect" "foobar" {
+		  name                 = "%{interconnect_name}"
+		  customer_name        = "internal_customer" # Special customer only available for Google testing.
+		  interconnect_type    = "DEDICATED"
+		  link_type            = "LINK_TYPE_ETHERNET_10G_LR"
+		  location             = "https://www.googleapis.com/compute/v1/projects/${data.google_project.project.project_id}/global/interconnectLocations/z2z-us-east4-zone1-lciadl-a" # Special location only available for Google testing.
+		  requested_link_count = 1
+		  admin_enabled        = true
+		  description          = "example description"
+		  macsec_enabled       = false
+		  noc_contact_email    = "user@example.com"
+		  requested_features   = []
+		  params {
+			resource_manager_tags = {
+				"%{tag_key_id}" = "%{tag_value_id}"
+				}
+			}
+		}
+		`, context)
+}
