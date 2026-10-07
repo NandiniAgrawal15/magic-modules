@@ -35,19 +35,23 @@ async:
 custom_code:
   encoder: templates/terraform/encoders/sql_source_representation_instance.go.tmpl
   decoder: templates/terraform/decoders/sql_source_representation_instance.go.tmpl
-examples:
+samples:
   - name: sql_source_representation_instance_basic
     primary_resource_id: instance
-    ignore_read_extra:
-      - password
-    vars:
-      name: my-instance
+    steps:
+      - name: sql_source_representation_instance_basic
+        ignore_read_extra:
+          - password
+        resource_id_vars:
+          name: my-instance
   - name: sql_source_representation_instance_postgres
     primary_resource_id: instance
-    ignore_read_extra:
-      - password
-    vars:
-      name: my-instance
+    steps:
+      - name: sql_source_representation_instance_postgres
+        ignore_read_extra:
+          - password
+        resource_id_vars:
+          name: my-instance
 properties:
   - name: name
     type: String
@@ -64,7 +68,7 @@ properties:
     type: String
     required: true
     description: |
-      The MySQL, PostgreSQL or SQL Server (beta) version to use. Supported values include MYSQL_5_6, MYSQL_5_7, MYSQL_8_0, MYSQL_8_4, POSTGRES_9_6, POSTGRES_10, POSTGRES_11, POSTGRES_12, POSTGRES_13, POSTGRES_14, POSTGRES_15, POSTGRES_16, POSTGRES_17, POSTGRES_18. Database Version Policies includes an up-to-date reference of supported versions.
+      The MySQL, PostgreSQL or SQL Server (beta) version to use. Supported values include MYSQL_5_6, MYSQL_5_7, MYSQL_8_0, MYSQL_8_4, POSTGRES_9_6, POSTGRES_10, POSTGRES_11, POSTGRES_12, POSTGRES_13, POSTGRES_14, POSTGRES_15, POSTGRES_16, POSTGRES_17, POSTGRES_18, SQLSERVER_2022_STANDARD, SQLSERVER_2022_ENTERPRISE, SQLSERVER_2022_EXPRESS, SQLSERVER_2022_WEB, SQLSERVER_2025_STANDARD, SQLSERVER_2025_ENTERPRISE, SQLSERVER_2025_EXPRESS, SQLSERVER_2025_WEB. Database Version Policies includes an up-to-date reference of supported versions.
   - name: onPremisesConfiguration
     type: NestedObject
     required: true

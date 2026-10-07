@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package networkconnectivity_test
 
 import (
@@ -16,6 +13,9 @@ import (
 
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
 	"github.com/hashicorp/terraform-provider-google/google/envvar"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/compute"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/networkconnectivity"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/resourcemanager"
 	"github.com/hashicorp/terraform-provider-google/google/tpgresource"
 	transport_tpg "github.com/hashicorp/terraform-provider-google/google/transport"
 
@@ -45,7 +45,7 @@ func TestAccNetworkConnectivityTransport_networkConnectivityTransportBasicExampl
 
 	acctest.VcrTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
-		ProtoV5ProviderFactories: acctest.ProtoV5ProviderBetaFactories(t),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
 		CheckDestroy:             testAccCheckNetworkConnectivityTransportDestroyProducer(t),
 		Steps: []resource.TestStep{
 			{
@@ -72,22 +72,18 @@ func TestAccNetworkConnectivityTransport_networkConnectivityTransportBasicExampl
 
 func testAccNetworkConnectivityTransport_networkConnectivityTransportBasicExample_basic(context map[string]interface{}) string {
 	return acctest.Nprintf(`
-data "google_project" "project" {
-  provider = google-beta
-}
+data "google_project" "project" {}
 
 resource "google_compute_network" "primary-network" {
-  provider                = google-beta
   name                    = "tf-test-my-vpc-network%{random_suffix}"
   auto_create_subnetworks = false
 }
 
 resource "google_network_connectivity_transport" "primary"  {
-  provider          = google-beta
   name              = "tf-test-basic-transport%{random_suffix}"
   region            = "us-east4"
   description       = "A sample transport"
-  remote_profile    = "https://networkconnectivity.googleapis.com/v1beta/${data.google_project.project.id}/locations/us-east4/remoteTransportProfiles/aws-us-east-1"
+  remote_profile    = "https://networkconnectivity.googleapis.com/v1/${data.google_project.project.id}/locations/us-east4/remoteTransportProfiles/aws-us-east-1"
   network           = google_compute_network.primary-network.name
   bandwidth         = "BPS_1G"
   remote_account_id = "123"
@@ -100,22 +96,18 @@ resource "google_network_connectivity_transport" "primary"  {
 
 func testAccNetworkConnectivityTransport_networkConnectivityTransportBasicExample_update(context map[string]interface{}) string {
 	return acctest.Nprintf(`
-data "google_project" "project" {
-  provider = google-beta
-}
+data "google_project" "project" {}
 
 resource "google_compute_network" "primary-network" {
-  provider                = google-beta
   name                    = "tf-test-my-vpc-network%{random_suffix}"
   auto_create_subnetworks = false
 }
 
 resource "google_network_connectivity_transport" "primary"  {
-  provider          = google-beta
   name              = "tf-test-basic-transport%{random_suffix}"
   region            = "us-east4"
   description       = "New description"
-  remote_profile    = "https://networkconnectivity.googleapis.com/v1beta/${data.google_project.project.id}/locations/us-east4/remoteTransportProfiles/aws-us-east-1"
+  remote_profile    = "https://networkconnectivity.googleapis.com/v1/${data.google_project.project.id}/locations/us-east4/remoteTransportProfiles/aws-us-east-1"
   network           = google_compute_network.primary-network.name
   bandwidth         = "BPS_1G"
   remote_account_id = "123"

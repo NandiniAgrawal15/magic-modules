@@ -6,6 +6,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/compute"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/resourcemanager"
+	"github.com/hashicorp/terraform-provider-google/google/services/servicenetworking"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/vertexai"
 )
 
 func TestAccVertexAIIndexEndpoint_updated(t *testing.T) {
@@ -13,7 +17,7 @@ func TestAccVertexAIIndexEndpoint_updated(t *testing.T) {
 	t.Parallel()
 
 	context := map[string]interface{}{
-		"network_name":  acctest.BootstrapSharedServiceNetworkingConnection(t, "vpc-network-1"),
+		"network_name":  servicenetworking.BootstrapSharedServiceNetworkingConnection(t, "vpc-network-1"),
 		"random_suffix": acctest.RandString(t, 10),
 	}
 
@@ -72,7 +76,7 @@ func TestAccVertexAIIndexEndpoint_psc_automation_config(t *testing.T) {
 func testAccVertexAIIndexEndpoint_basic(context map[string]interface{}) string {
 	return acctest.Nprintf(`
 resource "google_vertex_ai_index_endpoint" "index_endpoint" {
-  display_name = "sample-endpoint"
+  display_name = "tf-test-sample-endpoint%{random_suffix}"
   description  = "A sample vertex endpoint"
   region       = "us-central1"
   labels       = {
@@ -98,7 +102,7 @@ data "google_project" "project" {}
 func testAccVertexAIIndexEndpoint_updated(context map[string]interface{}) string {
 	return acctest.Nprintf(`
 resource "google_vertex_ai_index_endpoint" "index_endpoint" {
-  display_name = "sample-endpoint-updated"
+  display_name = "tf-test-sample-endpoint-updated%{random_suffix}"
   description  = "A sample vertex endpoint (updated)"
   region       = "us-central1"
   labels       = {

@@ -7,6 +7,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
 	"github.com/hashicorp/terraform-provider-google/google/envvar"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/kms"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/looker"
+	"github.com/hashicorp/terraform-provider-google/google/services/resourcemanager"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/storage"
 )
 
 func TestAccLookerInstance_update(t *testing.T) {
@@ -87,6 +91,9 @@ func TestAccLookerInstance_updateControlledEgress(t *testing.T) {
 
 func testAccLookerInstance_basic(context map[string]interface{}) string {
 	return fmt.Sprintf(`
+provider "google" {
+  prefer_regional_endpoints = true
+}
 resource "google_looker_instance" "test" {
   name               = "tf-test-looker-%s"
   platform_edition   = "LOOKER_CORE_ENTERPRISE_ANNUAL"
@@ -108,6 +115,9 @@ resource "google_looker_instance" "test" {
 
 func testAccLookerInstance_controlledEgress(context map[string]interface{}) string {
 	return fmt.Sprintf(`
+provider "google" {
+  prefer_regional_endpoints = true
+}
 resource "google_looker_instance" "test" {
   name               = "tf-test-looker-%s"
   platform_edition   = "LOOKER_CORE_ENTERPRISE_ANNUAL"
@@ -147,7 +157,7 @@ func TestAccLookerInstance_updatePeriodicExport(t *testing.T) {
 		"random_suffix": suffix,
 	}
 
-	acctest.BootstrapIamMembers(t, []acctest.IamMember{
+	resourcemanager.BootstrapIamMembers(t, []resourcemanager.IamMember{
 		{
 			// For writing/managing the export files in GCS
 			Member: "serviceAccount:service-{project_number}@gcp-sa-looker.iam.gserviceaccount.com",
@@ -188,6 +198,9 @@ func TestAccLookerInstance_updatePeriodicExport(t *testing.T) {
 
 func testAccLookerInstance_periodicExport(context map[string]interface{}) string {
 	return fmt.Sprintf(`
+provider "google" {
+  prefer_regional_endpoints = true
+}
 resource "google_storage_bucket" "export" {
   name          = "tf-test-looker-export-%s"
   location      = "US"

@@ -8,12 +8,17 @@ import (
 
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
 	"github.com/hashicorp/terraform-provider-google/google/envvar"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/dataproc"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/dataprocmetastore"
+	"github.com/hashicorp/terraform-provider-google/google/services/kms"
+	"github.com/hashicorp/terraform-provider-google/google/services/resourcemanager"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/storage"
 )
 
 func TestAccDataprocSessionTemplate_update(t *testing.T) {
 	t.Parallel()
 
-	acctest.BootstrapIamMembers(t, []acctest.IamMember{
+	resourcemanager.BootstrapIamMembers(t, []resourcemanager.IamMember{
 		{
 			Member: "serviceAccount:service-{project_number}@dataproc-accounts.iam.gserviceaccount.com",
 			Role:   "roles/cloudkms.cryptoKeyEncrypterDecrypter",
@@ -22,9 +27,9 @@ func TestAccDataprocSessionTemplate_update(t *testing.T) {
 
 	context := map[string]interface{}{
 		"project_name":    envvar.GetTestProjectFromEnv(),
-		"kms_key_name":    acctest.BootstrapKMSKeyWithPurposeInLocationAndName(t, "ENCRYPT_DECRYPT", "us-central1", "tf-bootstrap-dataproc-session-template-key1").CryptoKey.Name,
+		"kms_key_name":    kms.BootstrapKMSKeyWithPurposeInLocationAndName(t, "ENCRYPT_DECRYPT", "us-east1", "tf-bootstrap-dataproc-session-template-key1").CryptoKey.Name,
 		"prevent_destroy": false,
-		"subnetwork_name": acctest.BootstrapSubnetWithFirewallForDataprocBatches(t, "jupyer-session-test-network", "jupyter-session-test-subnetwork"),
+		"subnetwork_name": BootstrapSubnetWithFirewallForDataprocBatches(t, "jupyer-session-test-network", "jupyter-session-test-subnetwork"),
 		"random_suffix":   acctest.RandString(t, 10),
 	}
 
@@ -63,8 +68,8 @@ func TestAccDataprocSessionTemplate_update(t *testing.T) {
 func testAccDataprocSessionTemplate_preupdate(context map[string]interface{}) string {
 	return acctest.Nprintf(`
 resource "google_dataproc_session_template" "dataproc_session_templates_jupyter_update" {
-    name     = "projects/%{project_name}/locations/us-central1/sessionTemplates/tf-test-jupyter-session-template%{random_suffix}"
-    location = "us-central1"
+    name     = "projects/%{project_name}/locations/us-east1/sessionTemplates/tf-test-jupyter-session-template%{random_suffix}"
+    location = "us-east1"
     labels   = {"session_template_test": "terraform"}
 
     runtime_config {
@@ -96,8 +101,8 @@ data "google_storage_project_service_account" "gcs_account" {
 }
 
 resource "google_dataproc_session_template" "dataproc_session_templates_jupyter_update" {
-    name     = "projects/%{project_name}/locations/us-central1/sessionTemplates/tf-test-jupyter-session-template%{random_suffix}"
-    location      = "us-central1"
+    name     = "projects/%{project_name}/locations/us-east1/sessionTemplates/tf-test-jupyter-session-template%{random_suffix}"
+    location      = "us-east1"
     labels        = {"session_template_test": "terraform"}
 
     runtime_config {
@@ -110,7 +115,7 @@ resource "google_dataproc_session_template" "dataproc_session_templates_jupyter_
         ttl = "4800s"
         network_tags = ["tag2"]
         kms_key = "%{kms_key_name}"
-	subnetwork_uri = "%{subnetwork_name}"
+  subnetwork_uri = "%{subnetwork_name}"
         service_account = "${data.google_project.project.number}-compute@developer.gserviceaccount.com"
         staging_bucket = google_storage_bucket.bucket.name
       }
@@ -137,7 +142,7 @@ resource "google_storage_bucket" "bucket" {
 
 resource "google_dataproc_cluster" "basic" {
   name   = "tf-test-jupyter-session-template%{random_suffix}"
-  region = "us-central1"
+  region = "us-east1"
 
   cluster_config {
     # Keep the costs down with smallest config we can get away with
@@ -158,8 +163,9 @@ resource "google_dataproc_cluster" "basic" {
 
     master_config {
       num_instances = 1
-      machine_type  = "e2-standard-2"
+      machine_type  = "n4-standard-2"
       disk_config {
+        boot_disk_type    = "hyperdisk-balanced"
         boot_disk_size_gb = 35
       }
     }
@@ -172,7 +178,7 @@ resource "google_dataproc_cluster" "basic" {
 
 resource "google_dataproc_metastore_service" "ms" {
   service_id = "tf-test-jupyter-session-template%{random_suffix}"
-  location   = "us-central1"
+  location   = "us-east1"
   port       = 9080
   tier       = "DEVELOPER"
 
@@ -187,7 +193,7 @@ resource "google_dataproc_metastore_service" "ms" {
 
   network_config {
     consumers {
-      subnetwork = "projects/%{project_name}/regions/us-central1/subnetworks/%{subnetwork_name}"
+      subnetwork = "projects/%{project_name}/regions/us-east1/subnetworks/%{subnetwork_name}"
     }
   }
 }

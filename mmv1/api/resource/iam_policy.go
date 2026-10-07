@@ -21,6 +21,43 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// IamListResourceOptions configures generation of a single IAM list resource kind.
+type IamListResourceOptions struct {
+	// Generate emits the list resource, its registration,an acceptance test,
+	// and documentation for this kind.
+	Generate bool `yaml:"generate,omitempty"`
+
+	//EnableRoleFilter controls whether the generated list resource exposes a
+	// role filter. Defaults to true when unset.
+	EnableRoleFilter *bool `yaml:"enable_role_filter,omitempty"`
+
+	//EnableMemberFilter controls whether the generated list resource exposes a
+	// member filter. Defaults to true when unset.
+	EnableMemberFilter *bool `yaml:"enable_member_filter,omitempty"`
+}
+
+// ShouldGenerate reports whether this kind should be generated. Nil-safe.
+func (o *IamListResourceOptions) ShouldGenerate() bool {
+	return o != nil && o.Generate
+}
+
+// RoleFilterEnabled reports whether the list role filter should be enabled (default true).
+func (o *IamListResourceOptions) RoleFilterEnabled() bool {
+	return o != nil && (o.EnableRoleFilter == nil || *o.EnableRoleFilter)
+}
+
+// MemberFilterEnabled reports whether the list member filter should be enabled (default true).
+func (o *IamListResourceOptions) MemberFilterEnabled() bool {
+	return o != nil && (o.EnableMemberFilter == nil || *o.EnableMemberFilter)
+}
+
+// IamListResources holds per-kind IAM list resources generation options.
+type IamListResources struct {
+	MemberIamResource  *IamListResourceOptions `yaml:"member_iam_resource,omitempty"`
+	BindingIamResource *IamListResourceOptions `yaml:"binding_iam_resource,omitempty"`
+	PolicyIamResource  *IamListResourceOptions `yaml:"policy_iam_resource,omitempty"`
+}
+
 // Information about the IAM policy for this resource
 // Several GCP resources have IAM policies that are scoped to
 // and accessed via their parent resource
@@ -46,6 +83,13 @@ type IamPolicy struct {
 	// if it is not the same as the IAM resource. The IAP product needs these
 	// as its IAM policies refer to compute resources.
 	ParentResourceType string `yaml:"parent_resource_type,omitempty"`
+
+	// By default, the parent resource id is stored as the resource name format
+	// ie. project/{{project}}/resource/{{resource}}. Setting this to true will
+	// instead use the resource id ie. {{resource}}. The IAP product needs
+	// these for IAM policies that behave as singletons (their parent is often
+	// a project or location).
+	ParentIsResourceId bool `yaml:"parent_is_resource_id,omitempty"`
 
 	// Some resources allow retrieving the IAM policy with GET requests,
 	// others expect POST requests
@@ -99,6 +143,10 @@ type IamPolicy struct {
 	// How the API supports IAM conditions
 	IamConditionsRequestType string `yaml:"iam_conditions_request_type,omitempty"`
 
+	// [Optional] Whether to include an updateMask in the setIamPolicy request.
+	// Mandatory for older APIs like DNS to support IAM conditions.
+	UpdateMask bool `yaml:"update_mask,omitempty"`
+
 	// Allows us to override the base_url of the resource. This is required for Cloud Run as the
 	// IAM resources use an entirely different base URL from the actual resource
 	BaseUrl string `yaml:"base_url,omitempty"`
@@ -125,6 +173,16 @@ type IamPolicy struct {
 
 	// Add a deprecation message for a resource that's been deprecated in the API.
 	DeprecationMessage string `yaml:"deprecation_message,omitempty"`
+
+	// [Optional] IAM list resources (terrafrom query) to generate for this resource.
+	//
+	// list_resource:
+	//   member_iam_resource:
+	//     generate: true
+	//     enable_member_filter: false
+	//   binding_iam_resource:
+	//     generate: true
+	ListResource *IamListResources `yaml:"list_resource,omitempty"`
 }
 
 // newIamPolicyWithDefaults returns an IamPolicy object with default values set.
@@ -193,4 +251,35 @@ func (p *IamPolicy) Validate(rName string) (es []error) {
 	}
 
 	return es
+}
+
+// MemberListResource returns the member  IAM List Resource options, or nil.
+func (p *IamPolicy) MemberListResource() *IamListResourceOptions {
+	if p == nil || p.ListResource == nil {
+		return nil
+	}
+	return p.ListResource.MemberIamResource
+}
+
+// BindingListResource returns the binding IAM List Resource options, or nil.
+func (p *IamPolicy) BindingListResource() *IamListResourceOptions {
+	if p == nil || p.ListResource == nil {
+		return nil
+	}
+	return p.ListResource.BindingIamResource
+}
+
+// PolicyListResource returns the policy IAM List Resource options, or nil.
+func (p *IamPolicy) PolicyListResource() *IamListResourceOptions {
+	if p == nil || p.ListResource == nil {
+		return nil
+	}
+	return p.ListResource.PolicyIamResource
+}
+
+// Any ListResource reports whether any IAM list resource should be generated.
+func (p *IamPolicy) AnyListResource() bool {
+	return p.MemberListResource().ShouldGenerate() ||
+		p.BindingListResource().ShouldGenerate() ||
+		p.PolicyListResource().ShouldGenerate()
 }

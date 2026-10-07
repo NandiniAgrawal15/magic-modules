@@ -11,6 +11,7 @@ import (
 
 	dcl "github.com/hashicorp/terraform-provider-google/google/tpgdclresource"
 
+	"github.com/hashicorp/terraform-provider-google/google/registry"
 	"github.com/hashicorp/terraform-provider-google/google/tpgdclresource"
 	"github.com/hashicorp/terraform-provider-google/google/tpgresource"
 	transport_tpg "github.com/hashicorp/terraform-provider-google/google/transport"
@@ -20,6 +21,7 @@ func ResourceContainerAzureClient() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceContainerAzureClientCreate,
 		Read:   resourceContainerAzureClientRead,
+		Update: resourceContainerAzureClientUpdate,
 		Delete: resourceContainerAzureClientDelete,
 
 		Importer: &schema.ResourceImporter{
@@ -32,6 +34,7 @@ func ResourceContainerAzureClient() *schema.Resource {
 		},
 		CustomizeDiff: customdiff.All(
 			tpgresource.DefaultProviderProject,
+			tpgresource.DefaultProviderDeletionPolicy("DELETE"),
 		),
 
 		Schema: map[string]*schema.Schema{
@@ -89,6 +92,9 @@ func ResourceContainerAzureClient() *schema.Resource {
 				Computed:    true,
 				Description: "Output only. A globally unique identifier for the client.",
 			},
+			//UDP schema start
+			"deletion_policy": tpgresource.DeletionPolicySchemaEntry("DELETE"),
+			//UDP schema end
 		},
 	}
 }
@@ -207,10 +213,29 @@ func resourceContainerAzureClientRead(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("error setting uid in state: %s", err)
 	}
 
+	if err := tpgresource.DeletionPolicyReadDefault(d, config, "DELETE"); err != nil {
+		return err
+	}
+
 	return nil
 }
 
+// UDP update start
+func resourceContainerAzureClientUpdate(d *schema.ResourceData, meta interface{}) error {
+	// Only the root field "deletion_policy", "labels", "terraform_labels", and virtual fields are mutable
+	return resourceContainerAzureClientRead(d, meta)
+}
+
+//UDP update end
+
 func resourceContainerAzureClientDelete(d *schema.ResourceData, meta interface{}) error {
+
+	if ok, err := tpgresource.DeletionPolicyPreDelete(d); err != nil {
+		return err
+	} else if ok {
+		return nil
+	}
+
 	config := meta.(*transport_tpg.Config)
 	project, err := tpgresource.GetProject(d, config)
 	if err != nil {
@@ -269,4 +294,13 @@ func resourceContainerAzureClientImport(d *schema.ResourceData, meta interface{}
 	d.SetId(id)
 
 	return []*schema.ResourceData{d}, nil
+}
+
+func init() {
+	registry.Schema{
+		Name:        "google_container_azure_client",
+		ProductName: "containerazure",
+		Type:        registry.SchemaTypeResource,
+		Schema:      ResourceContainerAzureClient(),
+	}.Register()
 }

@@ -2,6 +2,8 @@ package sql
 
 import (
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func TestMaintenanceVersionDiffSuppress(t *testing.T) {
@@ -32,6 +34,104 @@ func TestMaintenanceVersionDiffSuppress(t *testing.T) {
 			t.Parallel()
 			if maintenanceVersionDiffSuppress("version", tc.Old, tc.New, nil) != tc.ShouldSuppress {
 				t.Fatalf("%q => %q expect DiffSuppress to return %t", tc.Old, tc.New, tc.ShouldSuppress)
+			}
+		})
+	}
+}
+
+func TestEntraidDiffSuppressFunc(t *testing.T) {
+	cases := map[string]struct {
+		K              string
+		Old, New       string
+		AppData        map[string]interface{}
+		ShouldSuppress bool
+	}{
+		"suppress when new is 1, old is 0, and app and tenant id are empty": {
+			K:   "settings.0.entraid_config.#",
+			Old: "0",
+			New: "1",
+			AppData: map[string]interface{}{
+				"settings": []interface{}{map[string]interface{}{"entraid_config": []interface{}{map[string]interface{}{"application_id": "", "tenant_id": ""}}}},
+			},
+			ShouldSuppress: true,
+		},
+		"do not suppress when key does not match": {
+			K:   "settings.0.other_config.#",
+			Old: "0",
+			New: "1",
+			AppData: map[string]interface{}{
+				"settings": []interface{}{map[string]interface{}{"entraid_config": []interface{}{map[string]interface{}{"application_id": "", "tenant_id": ""}}}},
+			},
+			ShouldSuppress: false,
+		},
+		"do not suppress when old is not 0": {
+			K:   "settings.0.entraid_config.#",
+			Old: "1",
+			New: "1",
+			AppData: map[string]interface{}{
+				"settings": []interface{}{map[string]interface{}{"entraid_config": []interface{}{map[string]interface{}{"application_id": "", "tenant_id": ""}}}},
+			},
+			ShouldSuppress: false,
+		},
+		"do not suppress when new is not 1": {
+			K:   "settings.0.entraid_config.#",
+			Old: "0",
+			New: "0",
+			AppData: map[string]interface{}{
+				"settings": []interface{}{map[string]interface{}{"entraid_config": []interface{}{map[string]interface{}{"application_id": "", "tenant_id": ""}}}},
+			},
+			ShouldSuppress: false,
+		},
+		"do not suppress when application_id is not empty": {
+			K:   "settings.0.entraid_config.#",
+			Old: "0",
+			New: "1",
+			AppData: map[string]interface{}{
+				"settings": []interface{}{map[string]interface{}{"entraid_config": []interface{}{map[string]interface{}{"application_id": "some-id", "tenant_id": ""}}}},
+			},
+			ShouldSuppress: false,
+		},
+		"do not suppress when tenant_id is not empty": {
+			K:   "settings.0.entraid_config.#",
+			Old: "0",
+			New: "1",
+			AppData: map[string]interface{}{
+				"settings": []interface{}{map[string]interface{}{"entraid_config": []interface{}{map[string]interface{}{"application_id": "", "tenant_id": "some-id"}}}},
+			},
+			ShouldSuppress: false,
+		},
+	}
+
+	for tn, tc := range cases {
+		t.Run(tn, func(t *testing.T) {
+			rd := schema.TestResourceDataRaw(t, map[string]*schema.Schema{
+				"settings": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"entraid_config": {
+								Type:     schema.TypeList,
+								Optional: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"application_id": {
+											Type:     schema.TypeString,
+											Optional: true,
+										},
+										"tenant_id": {
+											Type:     schema.TypeString,
+											Optional: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}, tc.AppData)
+			if entraidDiffSuppressFunc(tc.K, tc.Old, tc.New, rd) != tc.ShouldSuppress {
+				t.Errorf("Expected DiffSuppress to return %t for key=%q, old=%q, new=%q", tc.ShouldSuppress, tc.K, tc.Old, tc.New)
 			}
 		})
 	}
@@ -119,6 +219,74 @@ func TestDatabaseVersionDiffSuppress(t *testing.T) {
 			t.Parallel()
 			if databaseVersionDiffSuppress("version", testCase.oldVersion, testCase.newVersion, nil) != testCase.shouldSuppressDiff {
 				t.Fatalf("%q => %q expect DiffSuppress to return %t", testCase.oldVersion, testCase.newVersion, testCase.shouldSuppressDiff)
+			}
+		})
+	}
+}
+
+func TestDenyMaintenancePeriodDateDiffSuppress(t *testing.T) {
+	cases := map[string]struct {
+		Old, New       string
+		ShouldSuppress bool
+	}{
+		"recurring two-digit month and day with leading zero year should suppress diff": {
+			Old:            "0-12-20",
+			New:            "12-20",
+			ShouldSuppress: true,
+		},
+		"recurring single-digit month with zero-padding and leading zero year should suppress diff": {
+			Old:            "0-1-10",
+			New:            "01-10",
+			ShouldSuppress: true,
+		},
+		"recurring single-digit month and day with zero-padding and leading zero year should suppress diff": {
+			Old:            "0-1-5",
+			New:            "01-05",
+			ShouldSuppress: true,
+		},
+		"full date with zero-padded month and day should suppress diff against unpadded API value": {
+			Old:            "2026-1-5",
+			New:            "2026-01-05",
+			ShouldSuppress: true,
+		},
+		"identical full dates should suppress diff": {
+			Old:            "2026-11-01",
+			New:            "2026-11-01",
+			ShouldSuppress: true,
+		},
+		"different recurring dates should not suppress diff": {
+			Old:            "0-12-20",
+			New:            "12-25",
+			ShouldSuppress: false,
+		},
+		"recurring date vs full date with same month and day should not suppress diff": {
+			Old:            "0-12-20",
+			New:            "2026-12-20",
+			ShouldSuppress: false,
+		},
+		"different full dates should not suppress diff": {
+			Old:            "2026-1-5",
+			New:            "2026-01-06",
+			ShouldSuppress: false,
+		},
+		"empty old value on creation should not suppress diff": {
+			Old:            "",
+			New:            "12-20",
+			ShouldSuppress: false,
+		},
+		"invalid date format should not suppress diff": {
+			Old:            "0-1-10",
+			New:            "invalid",
+			ShouldSuppress: false,
+		},
+	}
+
+	for tn, tc := range cases {
+		tc := tc
+		t.Run(tn, func(t *testing.T) {
+			t.Parallel()
+			if denyMaintenancePeriodDateDiffSuppress("settings.0.deny_maintenance_period.0.start_date", tc.Old, tc.New, nil) != tc.ShouldSuppress {
+				t.Fatalf("%q => %q expect DiffSuppress to return %t", tc.Old, tc.New, tc.ShouldSuppress)
 			}
 		})
 	}

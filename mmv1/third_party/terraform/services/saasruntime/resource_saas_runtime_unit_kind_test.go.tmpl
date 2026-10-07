@@ -9,12 +9,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/saasruntime"
 	"github.com/hashicorp/terraform-provider-google/google/envvar"
+  "github.com/hashicorp/terraform-provider-google/google/services/resourcemanager"
 )
 
 func TestAccSaasRuntimeUnitKind_update(t *testing.T) {
 	t.Parallel()
-	acctest.BootstrapIamMembers(t, []acctest.IamMember{
+	resourcemanager.BootstrapIamMembers(t, []resourcemanager.IamMember{
 		{
 			Member: "serviceAccount:service-{project_number}@gcp-sa-saasservicemgmt.iam.gserviceaccount.com",
 			Role:   "roles/saasservicemgmt.serviceAgent",
@@ -95,7 +97,7 @@ resource "google_saas_runtime_release" "example_release" {
   release_id        = "tf-test-example-release%{random_suffix}"
   unit_kind         = google_saas_runtime_unit_kind.cluster_unit_kind.id
   blueprint {
-    package = "us-central1-docker.pkg.dev/ci-test-project-188019/test-repo/tf-test-easysaas-alpha-image@sha256:7992fdbaeaf998ecd31a7f937bb26e38a781ecf49b24857a6176c1e9bfc299ee"
+    package = "us-central1-docker.pkg.dev/ci-test-project-188019/test-repo/tf-test-easysaas-alpha-image@sha256:16f50ddbcbc7926ad9d4f09fa6c37306b88ccc4d6370f627a4733b1ab0823680"
   }
 }
 `, context)
@@ -180,7 +182,7 @@ resource "google_saas_runtime_release" "example_release" {
   release_id        = "tf-test-example-release%{random_suffix}"
   unit_kind         = google_saas_runtime_unit_kind.cluster_unit_kind.id
   blueprint {
-    package = "us-central1-docker.pkg.dev/ci-test-project-188019/test-repo/tf-test-easysaas-alpha-image@sha256:7992fdbaeaf998ecd31a7f937bb26e38a781ecf49b24857a6176c1e9bfc299ee"
+    package = "us-central1-docker.pkg.dev/ci-test-project-188019/test-repo/tf-test-easysaas-alpha-image@sha256:16f50ddbcbc7926ad9d4f09fa6c37306b88ccc4d6370f627a4733b1ab0823680"
   }
 }
 `, context)

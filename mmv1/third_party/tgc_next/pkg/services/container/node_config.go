@@ -1,6 +1,8 @@
 package container
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -9,6 +11,7 @@ import (
 	"github.com/GoogleCloudPlatform/terraform-google-conversion/v7/pkg/tpgresource"
 
 	"github.com/GoogleCloudPlatform/terraform-google-conversion/v7/pkg/verify"
+	"github.com/hashicorp/go-cty/cty"
 	"google.golang.org/api/container/v1"
 )
 
@@ -190,6 +193,25 @@ func schemaContainerdConfig() *schema.Schema {
 					}},
 			},
 		}},
+	}
+}
+
+func schemaTaintConfig() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeList,
+		Optional:    true,
+		MaxItems:    1,
+		Description: `Taint configuration for this node.`,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"architecture_taint_behavior": {
+					Type:         schema.TypeString,
+					Required:     true,
+					Description:  `Architecture taint behavior. Controls, how we apply taints based on the node architecture.`,
+					ValidateFunc: validation.StringInSlice([]string{"ARCHITECTURE_TAINT_BEHAVIOR_UNSPECIFIED", "NONE", "ARM"}, false),
+				},
+			},
+		},
 	}
 }
 
@@ -483,6 +505,13 @@ func schemaNodeConfig() *schema.Schema {
 					Description: `The name of a Google Compute Engine machine type.`,
 				},
 
+				"gpudirect_strategy": {
+					Type:        schema.TypeString,
+					Optional:    true,
+					ForceNew:    true,
+					Description: `GPUDirect RDMA strategy for the node pool.`,
+				},
+
 				"metadata": {
 					Type:        schema.TypeMap,
 					Optional:    true,
@@ -639,6 +668,8 @@ func schemaNodeConfig() *schema.Schema {
 					},
 				},
 
+				"taint_config": schemaTaintConfig(),
+
 				"effective_taints": {
 					Type:        schema.TypeList,
 					Computed:    true,
@@ -719,6 +750,21 @@ func schemaNodeConfig() *schema.Schema {
 								Optional:     true,
 								ValidateFunc: validation.StringInSlice([]string{"static", "none", ""}, false),
 								Description:  `Control the CPU management policy on the node.`,
+							},
+							"crash_loop_back_off": {
+								Type:        schema.TypeList,
+								Optional:    true,
+								MaxItems:    1,
+								Description: `Contains configuration options to modify node-level parameters for container restart behavior.`,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"max_container_restart_period": {
+											Type:        schema.TypeString,
+											Optional:    true,
+											Description: `The maximum duration the backoff delay can accrue to for container restarts.`,
+										},
+									},
+								},
 							},
 							"memory_manager": {
 								Type:        schema.TypeList,
@@ -829,6 +875,18 @@ func schemaNodeConfig() *schema.Schema {
 								Type:        schema.TypeInt,
 								Optional:    true,
 								Description: `Defines the maximum allowed grace period (in seconds) to use when terminating pods in response to a soft eviction threshold being met.`,
+							},
+							"shutdown_grace_period_seconds": {
+								Type:        schema.TypeInt,
+								Optional:    true,
+								Computed:    true,
+								Description: `Controls the total duration of time (in seconds) the node delays shutdown.`,
+							},
+							"shutdown_grace_period_critical_pods_seconds": {
+								Type:        schema.TypeInt,
+								Optional:    true,
+								Computed:    true,
+								Description: `Controls the portion of total grace period (in seconds) that is specifically reserved for terminating critical pods.`,
 							},
 							"eviction_soft": {
 								Type:        schema.TypeList,
@@ -1023,6 +1081,117 @@ func schemaNodeConfig() *schema.Schema {
 											Type:        schema.TypeInt,
 											Optional:    true,
 											Description: `Amount of 1G hugepages.`,
+										},
+									},
+								},
+							},
+							"swap_config": {
+								Type:        schema.TypeList,
+								Optional:    true,
+								MaxItems:    1,
+								Description: `Parameters that can be configured on Linux nodes.`,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"enabled": {
+											Type:        schema.TypeBool,
+											Optional:    true,
+											Description: `Whether or not swap is enabled`,
+										},
+										"boot_disk_profile": {
+											Type:        schema.TypeList,
+											Optional:    true,
+											MaxItems:    1,
+											Description: `Swap disk profile for boot disk`,
+											Elem: &schema.Resource{
+												Schema: map[string]*schema.Schema{
+													"swap_size_gib": {
+														Type:        schema.TypeInt,
+														Optional:    true,
+														Description: `Swap size in GiB`,
+													},
+												},
+											},
+										},
+										"dedicated_local_ssd_profile": {
+											Type:        schema.TypeList,
+											Optional:    true,
+											MaxItems:    1,
+											Description: `Swap disk profile for dedicated local SSD`,
+											Elem: &schema.Resource{
+												Schema: map[string]*schema.Schema{
+													"disk_count": {
+														Type:        schema.TypeInt,
+														Optional:    true,
+														Description: `Disk count`,
+													},
+												},
+											},
+										},
+										"ephemeral_local_ssd_profile": {
+											Type:        schema.TypeList,
+											Optional:    true,
+											MaxItems:    1,
+											Description: `Swap disk profile for ephemeral local SSD`,
+											Elem: &schema.Resource{
+												Schema: map[string]*schema.Schema{
+													"swap_size_gib": {
+														Type:        schema.TypeInt,
+														Optional:    true,
+														Description: `Swap size in GiB`,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							"accurate_time_config": {
+								Type:        schema.TypeList,
+								Optional:    true,
+								MaxItems:    1,
+								Description: `The settings for the accurate time configuration.`,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"enable_ptp_kvm_time_sync": {
+											Type:        schema.TypeBool,
+											Optional:    true,
+											Description: `Whether to enable accurate time synchronization with PTP-KVM.`,
+										},
+									},
+								},
+							},
+							"custom_node_init": {
+								Type:        schema.TypeList,
+								Optional:    true,
+								MaxItems:    1,
+								Description: `The custom node init settings.`,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"init_script": {
+											Type:        schema.TypeList,
+											Optional:    true,
+											MaxItems:    1,
+											Description: `The init script configuration.`,
+											Elem: &schema.Resource{
+												Schema: map[string]*schema.Schema{
+													"gcs_uri": {
+														Type:        schema.TypeString,
+														Optional:    true,
+														Description: `The GCS URI of the init script.`,
+													},
+													"gcs_generation": {
+														Type:        schema.TypeInt,
+														Optional:    true,
+														Computed:    true,
+														Description: `The GCS generation of the init script.`,
+													},
+													"gcp_secret_manager_secret_uri": {
+														Type:        schema.TypeString,
+														Optional:    true,
+														Description: `The Secret Manager secret URI of the init script.`,
+													},
+												},
+											},
 										},
 									},
 								},
@@ -1371,6 +1540,10 @@ func expandNodeConfig(d tpgresource.TerraformResourceData, prefix string, v inte
 		nc.MachineType = v.(string)
 	}
 
+	if v, ok := nodeConfig["gpudirect_strategy"]; ok {
+		nc.GpuDirectConfig = expandGpuDirectConfig(v)
+	}
+
 	if v, ok := nodeConfig["guest_accelerator"]; ok {
 		accels := v.([]interface{})
 		guestAccelerators := make([]*container.AcceleratorConfig, 0, len(accels))
@@ -1618,6 +1791,31 @@ func expandNodeConfig(d tpgresource.TerraformResourceData, prefix string, v inte
 
 	if v, ok := nodeConfig["kubelet_config"]; ok {
 		nc.KubeletConfig = expandKubeletConfig(v)
+
+		rawConfigNPRoot := d.GetRawConfig()
+		if !rawConfigNPRoot.IsNull() && rawConfigNPRoot.Type().IsObjectType() {
+			if prefix != "" {
+				parts := strings.Split(prefix, ".")
+				npIndex, err := strconv.Atoi(parts[1])
+				if err != nil {
+					panic(fmt.Errorf("unexpected format for node pool path prefix: %w. value: %v", err, prefix))
+				}
+				rawConfigNPRoot = rawConfigNPRoot.GetAttr("node_pool").Index(cty.NumberIntVal(int64(npIndex)))
+			}
+
+			if vNC := rawConfigNPRoot.GetAttr("node_config"); vNC.LengthInt() > 0 {
+				if vKC := vNC.Index(cty.NumberIntVal(0)).GetAttr("kubelet_config"); vKC.LengthInt() > 0 {
+					vSGP := vKC.Index(cty.NumberIntVal(0)).GetAttr("shutdown_grace_period_seconds")
+					if vSGP != cty.NullVal(cty.Number) && !vSGP.IsNull() {
+						nc.KubeletConfig.ForceSendFields = append(nc.KubeletConfig.ForceSendFields, "ShutdownGracePeriodSeconds")
+					}
+					vSGPC := vKC.Index(cty.NumberIntVal(0)).GetAttr("shutdown_grace_period_critical_pods_seconds")
+					if vSGPC != cty.NullVal(cty.Number) && !vSGPC.IsNull() {
+						nc.KubeletConfig.ForceSendFields = append(nc.KubeletConfig.ForceSendFields, "ShutdownGracePeriodCriticalPodsSeconds")
+					}
+				}
+			}
+		}
 	}
 
 	if v, ok := nodeConfig["linux_node_config"]; ok {
@@ -1643,6 +1841,10 @@ func expandNodeConfig(d tpgresource.TerraformResourceData, prefix string, v inte
 
 	if v, ok := nodeConfig["sole_tenant_config"]; ok && len(v.([]interface{})) > 0 {
 		nc.SoleTenantConfig = expandSoleTenantConfig(v)
+	}
+
+	if v, ok := nodeConfig["taint_config"]; ok {
+		nc.TaintConfig = expandTaintConfig(v)
 	}
 
 	if v, ok := nodeConfig["enable_confidential_storage"]; ok {
@@ -1801,6 +2003,14 @@ func expandKubeletConfig(v interface{}) *container.NodeKubeletConfig {
 	if evictionMaxPodGracePeriodSeconds, ok := cfg["eviction_max_pod_grace_period_seconds"]; ok {
 		kConfig.EvictionMaxPodGracePeriodSeconds = int64(evictionMaxPodGracePeriodSeconds.(int))
 	}
+	if shutdownGracePeriodSeconds, ok := cfg["shutdown_grace_period_seconds"]; ok {
+		kConfig.ShutdownGracePeriodSeconds = int64(shutdownGracePeriodSeconds.(int))
+		kConfig.ForceSendFields = append(kConfig.ForceSendFields, "ShutdownGracePeriodSeconds")
+	}
+	if shutdownGracePeriodCriticalPodsSeconds, ok := cfg["shutdown_grace_period_critical_pods_seconds"]; ok {
+		kConfig.ShutdownGracePeriodCriticalPodsSeconds = int64(shutdownGracePeriodCriticalPodsSeconds.(int))
+		kConfig.ForceSendFields = append(kConfig.ForceSendFields, "ShutdownGracePeriodCriticalPodsSeconds")
+	}
 	if v, ok := cfg["eviction_soft"]; ok && len(v.([]interface{})) > 0 {
 		es := v.([]interface{})[0].(map[string]interface{})
 		evictionSoft := &container.EvictionSignals{}
@@ -1878,7 +2088,26 @@ func expandKubeletConfig(v interface{}) *container.NodeKubeletConfig {
 		}
 		kConfig.EvictionMinimumReclaim = reclaim
 	}
+	if val, ok := cfg["crash_loop_back_off"]; ok {
+		kConfig.CrashLoopBackOff = expandCrashLoopBackOffConfig(val)
+	}
 	return kConfig
+}
+
+func expandCrashLoopBackOffConfig(v interface{}) *container.CrashLoopBackOffConfig {
+	if v == nil {
+		return nil
+	}
+	ls := v.([]interface{})
+	if len(ls) == 0 {
+		return nil
+	}
+	cfg := ls[0].(map[string]interface{})
+	config := &container.CrashLoopBackOffConfig{}
+	if maxContainerRestartPeriod, ok := cfg["max_container_restart_period"]; ok {
+		config.MaxContainerRestartPeriod = maxContainerRestartPeriod.(string)
+	}
+	return config
 }
 
 func expandTopologyManager(v interface{}) *container.TopologyManager {
@@ -1967,7 +2196,104 @@ func expandLinuxNodeConfig(v interface{}) *container.LinuxNodeConfig {
 		linuxNodeConfig.NodeKernelModuleLoading = expandNodeKernelModuleLoading(v)
 	}
 
+	if v, ok := cfg["swap_config"]; ok {
+		linuxNodeConfig.SwapConfig = expandSwapConfig(v)
+	}
+
+	if v, ok := cfg["custom_node_init"]; ok {
+		linuxNodeConfig.CustomNodeInit = expandCustomNodeInit(v)
+	}
+
 	return linuxNodeConfig
+}
+
+func expandSwapConfig(v interface{}) *container.SwapConfig {
+	if v == nil {
+		return nil
+	}
+	ls := v.([]interface{})
+	if len(ls) == 0 {
+		return nil
+	}
+	if ls[0] == nil {
+		return &container.SwapConfig{}
+	}
+	cfg := ls[0].(map[string]interface{})
+
+	swapConfig := &container.SwapConfig{}
+	if v, ok := cfg["enabled"]; ok {
+		swapConfig.Enabled = v.(bool)
+	}
+	if v, ok := cfg["boot_disk_profile"]; ok {
+		swapConfig.BootDiskProfile = expandBootDiskProfile(v)
+	}
+	if v, ok := cfg["dedicated_local_ssd_profile"]; ok {
+		swapConfig.DedicatedLocalSsdProfile = expandDedicatedLocalSsdProfile(v)
+	}
+	if v, ok := cfg["ephemeral_local_ssd_profile"]; ok {
+		swapConfig.EphemeralLocalSsdProfile = expandEphemeralLocalSsdProfile(v)
+	}
+	return swapConfig
+}
+
+func expandEphemeralLocalSsdProfile(v interface{}) *container.EphemeralLocalSsdProfile {
+	if v == nil {
+		return nil
+	}
+	ls := v.([]interface{})
+	if len(ls) == 0 {
+		return nil
+	}
+	if ls[0] == nil {
+		return &container.EphemeralLocalSsdProfile{}
+	}
+	cfg := ls[0].(map[string]interface{})
+
+	profile := &container.EphemeralLocalSsdProfile{}
+	if v, ok := cfg["swap_size_gib"]; ok {
+		profile.SwapSizeGib = int64(v.(int))
+	}
+	return profile
+}
+
+func expandDedicatedLocalSsdProfile(v interface{}) *container.DedicatedLocalSsdProfile {
+	if v == nil {
+		return nil
+	}
+	ls := v.([]interface{})
+	if len(ls) == 0 {
+		return nil
+	}
+	if ls[0] == nil {
+		return &container.DedicatedLocalSsdProfile{}
+	}
+	cfg := ls[0].(map[string]interface{})
+
+	profile := &container.DedicatedLocalSsdProfile{}
+	if v, ok := cfg["disk_count"]; ok {
+		profile.DiskCount = int64(v.(int))
+	}
+	return profile
+}
+
+func expandBootDiskProfile(v interface{}) *container.BootDiskProfile {
+	if v == nil {
+		return nil
+	}
+	ls := v.([]interface{})
+	if len(ls) == 0 {
+		return nil
+	}
+	if ls[0] == nil {
+		return &container.BootDiskProfile{}
+	}
+	cfg := ls[0].(map[string]interface{})
+
+	bdp := &container.BootDiskProfile{}
+	if v, ok := cfg["swap_size_gib"]; ok {
+		bdp.SwapSizeGib = int64(v.(int))
+	}
+	return bdp
 }
 
 func expandWindowsNodeConfig(v interface{}) *container.WindowsNodeConfig {
@@ -2076,6 +2402,27 @@ func expandContainerdConfig(v interface{}) *container.ContainerdConfig {
 	cc.WritableCgroups = expandWritableCgroups(cfg["writable_cgroups"])
 	cc.RegistryHosts = expandRegistryHosts(cfg["registry_hosts"])
 	return cc
+}
+
+func expandTaintConfig(v interface{}) *container.TaintConfig {
+	if v == nil {
+		return nil
+	}
+	ls := v.([]interface{})
+	if len(ls) == 0 {
+		return nil
+	}
+	if ls[0] == nil {
+		return &container.TaintConfig{}
+	}
+
+	cfg := ls[0].(map[string]interface{})
+
+	tc := &container.TaintConfig{}
+	if val, ok := cfg["architecture_taint_behavior"]; ok {
+		tc.ArchitectureTaintBehavior = val.(string)
+	}
+	return tc
 }
 
 func expandPrivateRegistryAccessConfig(v interface{}) *container.PrivateRegistryAccessConfig {
@@ -2352,6 +2699,7 @@ func flattenNodeConfig(v interface{}, _ interface{}) []map[string]interface{} {
 
 	transformed := map[string]interface{}{
 		"machine_type":                       c["machineType"],
+		"gpudirect_strategy":                 flattenGpuDirectConfig(c["gpuDirectConfig"]),
 		"containerd_config":                  flattenContainerdConfig(c["containerdConfig"]),
 		"disk_size_gb":                       c["diskSizeGb"],
 		"disk_type":                          c["diskType"],
@@ -2374,23 +2722,25 @@ func flattenNodeConfig(v interface{}, _ interface{}) []map[string]interface{} {
 		"storage_pools":                      c["storagePools"],
 		"min_cpu_platform":                   c["minCpuPlatform"],
 		"shielded_instance_config":           flattenShieldedInstanceConfig(c["shieldedInstanceConfig"]),
-		"taint":                              flattenEffectiveTaints(c["taints"]),
-		"workload_metadata_config":           flattenWorkloadMetadataConfig(c["workloadMetadataConfig"]),
-		"confidential_nodes":                 flattenConfidentialNodes(c["confidentialNodes"]),
-		"boot_disk_kms_key":                  c["bootDiskKmsKey"],
-		"kubelet_config":                     flattenKubeletConfig(c["kubeletConfig"]),
-		"linux_node_config":                  flattenLinuxNodeConfig(c["linuxNodeConfig"]),
-		"windows_node_config":                flattenWindowsNodeConfig(c["windowsNodeConfig"]),
-		"node_group":                         c["nodeGroup"],
-		"advanced_machine_features":          flattenAdvancedMachineFeaturesConfig(c["advancedMachineFeatures"]),
-		"max_run_duration":                   c["maxRunDuration"],
-		"flex_start":                         c["flexStart"],
-		"sole_tenant_config":                 flattenSoleTenantConfig(c["soleTenantConfig"]),
-		"fast_socket":                        flattenFastSocket(c["fastSocket"]),
-		"resource_manager_tags":              flattenResourceManagerTags(c["resourceManagerTags"]),
-		"enable_confidential_storage":        c["enableConfidentialStorage"],
-		"local_ssd_encryption_mode":          c["localSsdEncryptionMode"],
 		"sandbox_config":                     flattenSandboxConfig(c["sandboxConfig"]),
+		// TODO: need to differentiate the new resource and existing resource
+		// "taint":                              flattenEffectiveTaints(c["taints"]),
+		"workload_metadata_config":    flattenWorkloadMetadataConfig(c["workloadMetadataConfig"]),
+		"confidential_nodes":          flattenConfidentialNodes(c["confidentialNodes"]),
+		"boot_disk_kms_key":           c["bootDiskKmsKey"],
+		"kubelet_config":              flattenKubeletConfig(c["kubeletConfig"]),
+		"linux_node_config":           flattenLinuxNodeConfig(c["linuxNodeConfig"]),
+		"windows_node_config":         flattenWindowsNodeConfig(c["windowsNodeConfig"]),
+		"node_group":                  c["nodeGroup"],
+		"advanced_machine_features":   flattenAdvancedMachineFeaturesConfig(c["advancedMachineFeatures"]),
+		"max_run_duration":            c["maxRunDuration"],
+		"flex_start":                  c["flexStart"],
+		"sole_tenant_config":          flattenSoleTenantConfig(c["soleTenantConfig"]),
+		"fast_socket":                 flattenFastSocket(c["fastSocket"]),
+		"resource_manager_tags":       flattenResourceManagerTags(c["resourceManagerTags"]),
+		"enable_confidential_storage": c["enableConfidentialStorage"],
+		"local_ssd_encryption_mode":   c["localSsdEncryptionMode"],
+		"taint_config":                flattenTaintConfig(c["taintConfig"]),
 	}
 
 	// Suppress Default Value
@@ -2457,8 +2807,13 @@ func flattenAdvancedMachineFeaturesConfig(v interface{}) []map[string]interface{
 		return nil
 	}
 
+	threadsPerCore := c["threadsPerCore"]
+	if threadsPerCore == nil {
+		threadsPerCore = 0
+	}
+
 	transformed := map[string]interface{}{
-		"threads_per_core":             c["threadsPerCore"],
+		"threads_per_core":             threadsPerCore,
 		"enable_nested_virtualization": c["enableNestedVirtualization"],
 		"performance_monitoring_unit":  c["performanceMonitoringUnit"],
 	}
@@ -2842,26 +3197,45 @@ func flattenKubeletConfig(v interface{}) []map[string]interface{} {
 		return nil
 	}
 	transformed := map[string]interface{}{
-		"cpu_cfs_quota":                          c["cpuCfsQuota"],
-		"cpu_cfs_quota_period":                   c["cpuCfsQuotaPeriod"],
-		"cpu_manager_policy":                     c["cpuManagerPolicy"],
-		"memory_manager":                         flattenMemoryManager(c["memoryManager"]),
-		"topology_manager":                       flattenTopologyManager(c["topologyManager"]),
-		"insecure_kubelet_readonly_port_enabled": flattenInsecureKubeletReadonlyPortEnabled(v),
-		"pod_pids_limit":                         c["podPidsLimit"],
-		"container_log_max_size":                 c["containerLogMaxSize"],
-		"container_log_max_files":                c["containerLogMaxFiles"],
-		"image_gc_low_threshold_percent":         c["imageGcLowThresholdPercent"],
-		"image_gc_high_threshold_percent":        c["imageGcHighThresholdPercent"],
-		"image_minimum_gc_age":                   c["imageMinimumGcAge"],
-		"image_maximum_gc_age":                   c["imageMaximumGcAge"],
-		"allowed_unsafe_sysctls":                 c["allowedUnsafeSysctls"],
-		"single_process_oom_kill":                c["singleProcessOomKill"],
-		"max_parallel_image_pulls":               c["maxParallelImagePulls"],
-		"eviction_max_pod_grace_period_seconds":  c["evictionMaxPodGracePeriodSeconds"],
-		"eviction_soft":                          flattenEvictionSignals(c["evictionSoft"]),
-		"eviction_soft_grace_period":             flattenEvictionGracePeriod(c["evictionSoftGracePeriod"]),
-		"eviction_minimum_reclaim":               flattenEvictionMinimumReclaim(c["evictionMinimumReclaim"]),
+		"cpu_cfs_quota":                               c["cpuCfsQuota"],
+		"cpu_cfs_quota_period":                        c["cpuCfsQuotaPeriod"],
+		"cpu_manager_policy":                          c["cpuManagerPolicy"],
+		"memory_manager":                              flattenMemoryManager(c["memoryManager"]),
+		"topology_manager":                            flattenTopologyManager(c["topologyManager"]),
+		"insecure_kubelet_readonly_port_enabled":      flattenInsecureKubeletReadonlyPortEnabled(v),
+		"pod_pids_limit":                              c["podPidsLimit"],
+		"container_log_max_size":                      c["containerLogMaxSize"],
+		"container_log_max_files":                     c["containerLogMaxFiles"],
+		"image_gc_low_threshold_percent":              c["imageGcLowThresholdPercent"],
+		"image_gc_high_threshold_percent":             c["imageGcHighThresholdPercent"],
+		"image_minimum_gc_age":                        c["imageMinimumGcAge"],
+		"image_maximum_gc_age":                        c["imageMaximumGcAge"],
+		"allowed_unsafe_sysctls":                      c["allowedUnsafeSysctls"],
+		"single_process_oom_kill":                     c["singleProcessOomKill"],
+		"max_parallel_image_pulls":                    c["maxParallelImagePulls"],
+		"eviction_max_pod_grace_period_seconds":       c["evictionMaxPodGracePeriodSeconds"],
+		"shutdown_grace_period_seconds":               c["shutdownGracePeriodSeconds"],
+		"shutdown_grace_period_critical_pods_seconds": c["shutdownGracePeriodCriticalPodsSeconds"],
+		"eviction_soft":                               flattenEvictionSignals(c["evictionSoft"]),
+		"eviction_soft_grace_period":                  flattenEvictionGracePeriod(c["evictionSoftGracePeriod"]),
+		"eviction_minimum_reclaim":                    flattenEvictionMinimumReclaim(c["evictionMinimumReclaim"]),
+		"crash_loop_back_off":                         flattenCrashLoopBackOffConfig(c["crashLoopBackOff"]),
+	}
+
+	return []map[string]interface{}{transformed}
+}
+
+func flattenCrashLoopBackOffConfig(v interface{}) []map[string]interface{} {
+	if v == nil {
+		return nil
+	}
+	c, ok := v.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	transformed := map[string]interface{}{
+		"max_container_restart_period": c["maxContainerRestartPeriod"],
 	}
 
 	return []map[string]interface{}{transformed}
@@ -2912,6 +3286,23 @@ func flattenNodePoolAutoConfigNodeKubeletConfig(v interface{}) []map[string]inte
 	transformed := map[string]interface{}{}
 	if c != nil {
 		transformed["insecure_kubelet_readonly_port_enabled"] = flattenInsecureKubeletReadonlyPortEnabled(c)
+	}
+
+	return []map[string]interface{}{transformed}
+}
+
+func flattenNodePoolAutoConfigLinuxNodeConfig(v interface{}) []map[string]interface{} {
+	if v == nil {
+		return nil
+	}
+	c, ok := v.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	transformed := map[string]interface{}{
+		"cgroup_mode":                c["cgroupMode"],
+		"node_kernel_module_loading": flattenNodeKernelModuleLoading(c["nodeKernelModuleLoading"]),
 	}
 
 	return []map[string]interface{}{transformed}
@@ -2999,8 +3390,72 @@ func flattenLinuxNodeConfig(v interface{}) []map[string]interface{} {
 		"transparent_hugepage_enabled": c["transparentHugepageEnabled"],
 		"transparent_hugepage_defrag":  c["transparentHugepageDefrag"],
 		"node_kernel_module_loading":   flattenNodeKernelModuleLoading(c["nodeKernelModuleLoading"]),
+		"swap_config":                  flattenSwapConfig(c["swapConfig"]),
+		"accurate_time_config":         flattenAccurateTimeConfig(c["accurateTimeConfig"]),
+		"custom_node_init":             flattenCustomNodeInit(c["customNodeInit"]),
 	}
 
+	return []map[string]interface{}{transformed}
+}
+
+func flattenAccurateTimeConfig(v interface{}) []map[string]interface{} {
+	if v == nil {
+		return nil
+	}
+	c, ok := v.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	transformed := map[string]interface{}{
+		"enable_ptp_kvm_time_sync": c["enablePtpKvmTimeSync"],
+	}
+	return []map[string]interface{}{transformed}
+}
+
+func flattenSwapConfig(v interface{}) []map[string]interface{} {
+	if v == nil {
+		return nil
+	}
+	c, ok := v.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	transformed := map[string]interface{}{
+		"enabled": c["enabled"],
+	}
+	if bdp, ok := c["bootDiskProfile"].(map[string]interface{}); ok {
+		transformed["boot_disk_profile"] = []map[string]interface{}{
+			{
+				"swap_size_gib": bdp["swapSizeGib"],
+			},
+		}
+	}
+	if dlsp, ok := c["dedicatedLocalSsdProfile"].(map[string]interface{}); ok {
+		diskCount := dlsp["diskCount"]
+		if strCount, ok := diskCount.(string); ok {
+			if intCount, err := strconv.Atoi(strCount); err == nil {
+				diskCount = intCount
+			}
+		}
+		transformed["dedicated_local_ssd_profile"] = []map[string]interface{}{
+			{
+				"disk_count": diskCount,
+			},
+		}
+	}
+	if elsp, ok := c["ephemeralLocalSsdProfile"].(map[string]interface{}); ok {
+		swapSizeGib := elsp["swapSizeGib"]
+		if strSize, ok := swapSizeGib.(string); ok {
+			if intSize, err := strconv.Atoi(strSize); err == nil {
+				swapSizeGib = intSize
+			}
+		}
+		transformed["ephemeral_local_ssd_profile"] = []map[string]interface{}{
+			{
+				"swap_size_gib": swapSizeGib,
+			},
+		}
+	}
 	return []map[string]interface{}{transformed}
 }
 
@@ -3055,6 +3510,21 @@ func flattenNodeKernelModuleLoading(v interface{}) []map[string]interface{} {
 	r := make(map[string]interface{})
 	if val, ok := c["policy"]; ok {
 		r["policy"] = val
+	}
+	return []map[string]interface{}{r}
+}
+
+func flattenTaintConfig(v interface{}) []map[string]interface{} {
+	if v == nil {
+		return nil
+	}
+	c, ok := v.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	r := map[string]interface{}{}
+	if c["architectureTaintBehavior"] != nil {
+		r["architecture_taint_behavior"] = c["architectureTaintBehavior"]
 	}
 	return []map[string]interface{}{r}
 }
@@ -3343,5 +3813,123 @@ func flattenFastSocket(v interface{}) []map[string]interface{} {
 		"enabled": enabled,
 	}
 
+	return []map[string]interface{}{transformed}
+}
+
+// GPUDirectConfig is currently directly stored as a GpuDirectStrategy string.
+func expandGpuDirectConfig(v interface{}) *container.GPUDirectConfig {
+	if v == nil || v.(string) == "" {
+		return nil
+	}
+
+	return &container.GPUDirectConfig{
+		GpuDirectStrategy: v.(string),
+	}
+}
+
+// GPUDirectConfig currently only has one field, flatten directly to string.
+func flattenGpuDirectConfig(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	c, ok := v.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	strategy, ok := c["gpuDirectStrategy"].(string)
+	if !ok {
+		return ""
+	}
+	return strategy
+}
+
+func expandCustomNodeInit(v interface{}) *container.CustomNodeInit {
+	if v == nil {
+		return nil
+	}
+	ls := v.([]interface{})
+	if len(ls) == 0 {
+		return nil
+	}
+	if ls[0] == nil {
+		return &container.CustomNodeInit{}
+	}
+	cfg := ls[0].(map[string]interface{})
+
+	customNodeInit := &container.CustomNodeInit{}
+	if v, ok := cfg["init_script"]; ok {
+		customNodeInit.InitScript = expandInitScript(v)
+	}
+	return customNodeInit
+}
+
+func expandInitScript(v interface{}) *container.InitScript {
+	if v == nil {
+		return nil
+	}
+	ls := v.([]interface{})
+	if len(ls) == 0 {
+		return nil
+	}
+	if ls[0] == nil {
+		return &container.InitScript{}
+	}
+	cfg := ls[0].(map[string]interface{})
+
+	initScript := &container.InitScript{}
+	if v, ok := cfg["gcs_uri"]; ok {
+		initScript.GcsUri = v.(string)
+	}
+	if v, ok := cfg["gcs_generation"]; ok {
+		initScript.GcsGeneration = int64(v.(int))
+	}
+	if v, ok := cfg["gcp_secret_manager_secret_uri"]; ok {
+		initScript.GcpSecretManagerSecretUri = v.(string)
+	}
+	return initScript
+}
+
+func flattenCustomNodeInit(v interface{}) []map[string]interface{} {
+	if v == nil {
+		return nil
+	}
+	c, ok := v.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	transformed := map[string]interface{}{}
+	if is, ok := c["initScript"].(map[string]interface{}); ok {
+		transformed["init_script"] = flattenInitScript(is)
+	}
+	return []map[string]interface{}{transformed}
+}
+
+func flattenInitScript(v interface{}) []map[string]interface{} {
+	if v == nil {
+		return nil
+	}
+	c, ok := v.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	transformed := map[string]interface{}{}
+	if val, ok := c["gcsUri"]; ok {
+		transformed["gcs_uri"] = val
+	}
+	if val, ok := c["gcsGeneration"]; ok {
+		var gen interface{} = val
+		if strGen, ok := val.(string); ok {
+			if intGen, err := strconv.Atoi(strGen); err == nil {
+				gen = intGen
+			}
+		} else if floatGen, ok := val.(float64); ok {
+			gen = int(floatGen)
+		}
+		transformed["gcs_generation"] = gen
+	}
+	if val, ok := c["gcpSecretManagerSecretUri"]; ok {
+		transformed["gcp_secret_manager_secret_uri"] = val
+	}
 	return []map[string]interface{}{transformed}
 }

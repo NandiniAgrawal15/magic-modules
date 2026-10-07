@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-provider-google/google/registry"
 	"github.com/hashicorp/terraform-provider-google/google/tpgresource"
 	transport_tpg "github.com/hashicorp/terraform-provider-google/google/transport"
 )
@@ -17,6 +18,9 @@ func DataSourceGoogleContainerCluster() *schema.Resource {
 
 	// Set 'Optional' schema elements
 	tpgresource.AddOptionalFieldsToSchema(dsSchema, "project", "location")
+	// skip_node_pool_refresh is an input to the read path (flattenClusterNodePools),
+	// so it must be settable instead of computed-only. See resource_container_cluster.go.
+	tpgresource.AddOptionalFieldsToSchema(dsSchema, "skip_node_pool_refresh")
 
 	return &schema.Resource{
 		Read:   datasourceContainerClusterRead,
@@ -61,4 +65,13 @@ func datasourceContainerClusterRead(d *schema.ResourceData, meta interface{}) er
 	}
 
 	return nil
+}
+
+func init() {
+	registry.Schema{
+		Name:        "google_container_cluster",
+		ProductName: "container",
+		Type:        registry.SchemaTypeDataSource,
+		Schema:      DataSourceGoogleContainerCluster(),
+	}.Register()
 }

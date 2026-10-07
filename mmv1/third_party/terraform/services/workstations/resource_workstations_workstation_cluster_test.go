@@ -5,6 +5,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/compute"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/resourcemanager"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/workstations"
 )
 
 func TestAccWorkstationsWorkstationCluster_update(t *testing.T) {
@@ -46,10 +49,6 @@ func TestAccWorkstationsWorkstationCluster_update(t *testing.T) {
 
 func TestAccWorkstationsWorkstationCluster_Private_update(t *testing.T) {
 	t.Parallel()
-
-	// Skip in VCR until the test issue is resolved
-	// TODO(shuyama): Add GH issue link
-	acctest.SkipIfVcr(t)
 
 	randomSuffix := acctest.RandString(t, 10)
 

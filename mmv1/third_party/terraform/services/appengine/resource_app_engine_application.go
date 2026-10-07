@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/hashicorp/terraform-provider-google/google/registry"
 	"github.com/hashicorp/terraform-provider-google/google/tpgresource"
 	transport_tpg "github.com/hashicorp/terraform-provider-google/google/transport"
 	"github.com/hashicorp/terraform-provider-google/google/verify"
@@ -137,11 +138,11 @@ func ResourceAppEngineApplication() *schema.Resource {
 				Description: `The GCR domain used for storing managed Docker images for this app.`,
 			},
 			"iap": {
-				Type:        schema.TypeList,
-				Optional:    true,
-				Computed:    true,
-				MaxItems:    1,
-				Description: `Settings for enabling Cloud Identity Aware Proxy`,
+				Type:             schema.TypeList,
+				Optional:         true,
+				MaxItems:         1,
+				DiffSuppressFunc: suppressAppEngineApplicationIapDiffWhenUnset,
+				Description:      `Settings for enabling Cloud Identity Aware Proxy`,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"enabled": {
@@ -156,10 +157,25 @@ func ResourceAppEngineApplication() *schema.Resource {
 							Description: `OAuth2 client ID to use for the authentication flow.`,
 						},
 						"oauth2_client_secret": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Sensitive:   true,
-							Description: `OAuth2 client secret to use for the authentication flow. The SHA-256 hash of the value is returned in the oauth2ClientSecretSha256 field.`,
+							Type:         schema.TypeString,
+							Optional:     true,
+							Sensitive:    true,
+							ExactlyOneOf: []string{"iap.0.oauth2_client_secret", "iap.0.oauth2_client_secret_wo"},
+							Description:  `OAuth2 client secret to use for the authentication flow. The SHA-256 hash of the value is returned in the oauth2ClientSecretSha256 field.`,
+						},
+						"oauth2_client_secret_wo": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							WriteOnly:    true,
+							ExactlyOneOf: []string{"iap.0.oauth2_client_secret", "iap.0.oauth2_client_secret_wo"},
+							RequiredWith: []string{"iap.0.oauth2_client_secret_wo_version"},
+							Description:  `OAuth2 client secret to use for the authentication flow. The SHA-256 hash of the value is returned in the oauth2ClientSecretSha256 field.`,
+						},
+						"oauth2_client_secret_wo_version": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							RequiredWith: []string{"iap.0.oauth2_client_secret_wo"},
+							Description:  "Triggers update of `oauth2_client_secret_wo` write-only. Increment this value when an update to `oauth2_client_secret_wo` is needed. For more info see [updating write-only arguments](/docs/providers/google/guides/using_write_only_arguments.html#updating-write-only-arguments)",
 						},
 						"oauth2_client_secret_sha256": {
 							Type:        schema.TypeString,
@@ -213,6 +229,15 @@ func appEngineApplicationLocationIDCustomizeDiff(_ context.Context, d *schema.Re
 	return nil
 }
 
+// Suppress API-returned IAP values when the iap block is omitted from configuration.
+func suppressAppEngineApplicationIapDiffWhenUnset(_ string, _, _ string, d *schema.ResourceData) bool {
+	iap := d.GetRawConfig().GetAttr("iap")
+	if iap.IsNull() {
+		return true
+	}
+	return iap.IsKnown() && iap.LengthInt() == 0
+}
+
 func resourceAppEngineApplicationCreate(d *schema.ResourceData, meta interface{}) error {
 	config := meta.(*transport_tpg.Config)
 	userAgent, err := tpgresource.GenerateUserAgentString(d, config.UserAgent)
@@ -237,7 +262,7 @@ func resourceAppEngineApplicationCreate(d *schema.ResourceData, meta interface{}
 	defer transport_tpg.MutexStore.Unlock(lockName)
 
 	log.Printf("[DEBUG] Creating App Engine App")
-	op, err := config.NewAppEngineClient(userAgent).Apps.Create(app).Do()
+	op, err := NewClient(config, userAgent).Apps.Create(app).Do()
 	if err != nil {
 		return fmt.Errorf("Error creating App Engine application: %s", err.Error())
 	}
@@ -263,7 +288,7 @@ func resourceAppEngineApplicationRead(d *schema.ResourceData, meta interface{}) 
 	}
 	pid := d.Id()
 
-	app, err := config.NewAppEngineClient(userAgent).Apps.Get(pid).Do()
+	app, err := NewClient(config, userAgent).Apps.Get(pid).Do()
 	if err != nil {
 		return transport_tpg.HandleNotFoundError(err, d, fmt.Sprintf("App Engine Application %q", pid))
 	}
@@ -350,7 +375,7 @@ func resourceAppEngineApplicationUpdate(d *schema.ResourceData, meta interface{}
 	defer transport_tpg.MutexStore.Unlock(lockName)
 
 	log.Printf("[DEBUG] Updating App Engine App")
-	op, err := config.NewAppEngineClient(userAgent).Apps.Patch(pid, app).UpdateMask("authDomain,databaseType,servingStatus,featureSettings.splitHealthChecks,iap").Do()
+	op, err := NewClient(config, userAgent).Apps.Patch(pid, app).UpdateMask("authDomain,databaseType,servingStatus,featureSettings.splitHealthChecks,iap").Do()
 	if err != nil {
 		return fmt.Errorf("Error updating App Engine application: %s", err.Error())
 	}
@@ -410,10 +435,14 @@ func expandAppEngineApplicationIap(d *schema.ResourceData) (*appengine.IdentityA
 	if len(blocks) < 1 {
 		return nil, nil
 	}
+	clientSecret := tpgresource.GetRawConfigAttributeAsString(d, "iap.0.oauth2_client_secret_wo")
+	if clientSecret == "" {
+		clientSecret = d.Get("iap.0.oauth2_client_secret").(string)
+	}
 	return &appengine.IdentityAwareProxy{
 		Enabled:                  d.Get("iap.0.enabled").(bool),
 		Oauth2ClientId:           d.Get("iap.0.oauth2_client_id").(string),
-		Oauth2ClientSecret:       d.Get("iap.0.oauth2_client_secret").(string),
+		Oauth2ClientSecret:       clientSecret,
 		Oauth2ClientSecretSha256: d.Get("iap.0.oauth2_client_secret_sha256").(string),
 	}, nil
 }
@@ -433,10 +462,11 @@ func flattenAppEngineApplicationIap(d *schema.ResourceData, iap *appengine.Ident
 		return []map[string]interface{}{}, nil
 	}
 	result := map[string]interface{}{
-		"enabled":                     iap.Enabled,
-		"oauth2_client_id":            iap.Oauth2ClientId,
-		"oauth2_client_secret":        d.Get("iap.0.oauth2_client_secret"),
-		"oauth2_client_secret_sha256": iap.Oauth2ClientSecretSha256,
+		"enabled":                         iap.Enabled,
+		"oauth2_client_id":                iap.Oauth2ClientId,
+		"oauth2_client_secret":            d.Get("iap.0.oauth2_client_secret"),
+		"oauth2_client_secret_wo_version": d.Get("iap.0.oauth2_client_secret_wo_version"),
+		"oauth2_client_secret_sha256":     iap.Oauth2ClientSecretSha256,
 	}
 	return []map[string]interface{}{result}, nil
 }
@@ -451,4 +481,13 @@ func flattenAppEngineApplicationDispatchRules(rules []*appengine.UrlDispatchRule
 		})
 	}
 	return results, nil
+}
+
+func init() {
+	registry.Schema{
+		Name:        "google_app_engine_application",
+		ProductName: "appengine",
+		Type:        registry.SchemaTypeResource,
+		Schema:      ResourceAppEngineApplication(),
+	}.Register()
 }

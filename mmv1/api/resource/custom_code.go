@@ -67,6 +67,12 @@ type CustomCode struct {
 	// exported (e.g. "fooBarValidationRegex").
 	Constants string `yaml:"constants,omitempty"`
 
+	// TestConstants go above everything else in the test file, and include
+	// things like methods that will be referred to by name elsewhere
+	// (e.g. "fooBarDiffSuppress") and regexes that are necessarily
+	// exported (e.g. "fooBarValidationRegex").
+	TestConstants string `yaml:"test_constants,omitempty"`
+
 	// This code is run before the Create call happens.  It's placed
 	// in the Create function, just before the Create call is made.
 	PreCreate string `yaml:"pre_create,omitempty"`
@@ -76,8 +82,7 @@ type CustomCode struct {
 	PostCreate string `yaml:"post_create,omitempty"`
 
 	// This code is run after the Create call fails before the error is
-	// returned. It's placed in the Create function directly without
-	// modification.
+	// returned. It is wrapped in a function.
 	PostCreateFailure string `yaml:"post_create_failure,omitempty"`
 
 	// This code replaces the entire contents of the Create call. It
@@ -105,6 +110,10 @@ type CustomCode struct {
 	// false.
 	PostUpdate string `yaml:"post_update,omitempty"`
 
+	// This code is run after the Update call fails before the error is
+	// returned. It is wrapped in a function.
+	PostUpdateFailure string `yaml:"post_update_failure,omitempty"`
+
 	// This code replaces the entire contents of the Update call. It
 	// should be used for resources that don't have normal update
 	// semantics that cannot be supported well by other MM features.
@@ -118,6 +127,10 @@ type CustomCode struct {
 	// This code is run just after the Delete call happens.
 	PostDelete string `yaml:"post_delete,omitempty"`
 
+	// This code is run after the Delete call fails before the error is
+	// returned. It is wrapped in a function.
+	PostDeleteFailure string `yaml:"post_delete_failure,omitempty"`
+
 	// This code replaces the entire delete method.  Since the delete
 	// method's function header can't be changed, the template
 	// inserts that for you - do not include it in your custom code.
@@ -127,6 +140,10 @@ type CustomCode struct {
 	// method's function header can't be changed, the template
 	// inserts that for you - do not include it in your custom code.
 	CustomImport string `yaml:"custom_import,omitempty"`
+
+	// This code replaces the entire identity schema method.  Since the identity schema method's function header can't be changed, the template
+	// inserts that for you - do not include it in your custom code.
+	CustomIdentity []string `yaml:"custom_identity,omitempty"`
 
 	// This code is run just after the import method succeeds - it
 	// is useful for parsing attributes that are necessary for

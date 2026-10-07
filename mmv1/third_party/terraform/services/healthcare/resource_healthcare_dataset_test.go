@@ -12,7 +12,7 @@ import (
 	transport_tpg "github.com/hashicorp/terraform-provider-google/google/transport"
 )
 
-func TestAccHealthcareDatasetIdParsing(t *testing.T) {
+func TestHealthcareDatasetIdParsing(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
@@ -122,7 +122,7 @@ func testAccCheckGoogleHealthcareDatasetUpdate(t *testing.T, timeZone string) re
 				return err
 			}
 
-			response, err := config.NewHealthcareClient(config.UserAgent).Projects.Locations.Datasets.Get(gcpResourceUri).Do()
+			response, err := healthcare.NewClient(config, config.UserAgent).Projects.Locations.Datasets.Get(gcpResourceUri).Do()
 			if err != nil {
 				return fmt.Errorf("Unexpected failure while verifying 'updated' dataset: %s", err)
 			}

@@ -7,8 +7,10 @@
 
 package tests
 
+import AllNightlyTestsName
 import ServiceSweeperName
 import builds.UseTeamCityGoTest
+import jetbrains.buildServer.configs.kotlin.BuildTypeSettings
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -21,10 +23,13 @@ class BuildConfigurationFeatureTests {
 
         val gaProject = getSubProject(root, gaProjectName)
         val betaProject = getSubProject(root, betaProjectName)
-        val projectSweeperProject = getSubProject(root, projectSweeperProjectName)
+        val globalSweepersProject = getSubProject(root, globalSweepersProjectName)
 
-        (gaProject.subProjects + betaProject.subProjects + projectSweeperProject.subProjects).forEach{p ->
+        (gaProject.subProjects + betaProject.subProjects + globalSweepersProject.subProjects).forEach{p ->
             p.buildTypes.forEach{bt ->
+                if (bt.type == BuildTypeSettings.Type.COMPOSITE) {
+                    return@forEach
+                }
                 assertTrue("Build '${bt.id}' should fail on errors!", bt.failureConditions.errorMessage)
             }
         }
@@ -36,9 +41,9 @@ class BuildConfigurationFeatureTests {
 
         val gaProject = getSubProject(root, gaProjectName)
         val betaProject = getSubProject(root, betaProjectName)
-        val projectSweeperProject = getSubProject(root, projectSweeperProjectName)
+        val globalSweepersProject = getSubProject(root, globalSweepersProjectName)
 
-        (gaProject.subProjects + betaProject.subProjects + projectSweeperProject.subProjects).forEach{p ->
+        (gaProject.subProjects + betaProject.subProjects + globalSweepersProject.subProjects).forEach{p ->
             var exists: ArrayList<Boolean> = arrayListOf()
             p.buildTypes.forEach{bt ->
                 bt.features.items.forEach { f ->
@@ -75,8 +80,8 @@ class BuildConfigurationFeatureTests {
                     break
                 }
             }
-            // service sweeper does not contain push artifacts to GCS step
-            if (!bt.name.startsWith(ServiceSweeperName)) {
+            // service sweeper and composite builds do not contain push artifacts to GCS step
+            if (!bt.name.startsWith(ServiceSweeperName) && bt.name != AllNightlyTestsName) {
                 assertTrue("Build configuration `${bt.name}` contains a build step that pushes artifacts to GCS", found)
             }
         }

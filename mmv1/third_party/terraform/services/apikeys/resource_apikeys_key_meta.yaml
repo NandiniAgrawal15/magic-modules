@@ -17,3 +17,7 @@ fields:
   - api_field: 'restrictions.serverKeyRestrictions.allowedIps'
   - api_field: 'uid'
   - api_field: 'serviceAccountEmail'
+  - field: 'deletion_policy'
+    provider_only: true
+  - field: 'check_existing_usage'
+    provider_only: true

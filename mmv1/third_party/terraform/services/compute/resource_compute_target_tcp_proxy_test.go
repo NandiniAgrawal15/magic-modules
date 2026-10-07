@@ -7,14 +7,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
+	"github.com/hashicorp/terraform-provider-google/google/services/compute"
 )
 
 func TestAccComputeTargetTcpProxy_update(t *testing.T) {
 	t.Parallel()
 
-	target := fmt.Sprintf("ttcp-test-%s", acctest.RandString(t, 10))
-	backend := fmt.Sprintf("ttcp-test-%s", acctest.RandString(t, 10))
-	hc := fmt.Sprintf("ttcp-test-%s", acctest.RandString(t, 10))
+	target := fmt.Sprintf("tf-test-ttcp-%s", acctest.RandString(t, 10))
+	backend := fmt.Sprintf("tf-test-ttcp-%s", acctest.RandString(t, 10))
+	hc := fmt.Sprintf("tf-test-ttcp-%s", acctest.RandString(t, 10))
 
 	acctest.VcrTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
@@ -53,7 +54,7 @@ func testAccCheckComputeTargetTcpProxyExists(t *testing.T, n string) resource.Te
 		config := acctest.GoogleProviderConfig(t)
 		name := rs.Primary.Attributes["name"]
 
-		found, err := config.NewComputeClient(config.UserAgent).TargetTcpProxies.Get(
+		found, err := compute.DEPRECATED_LegacyApiaryClient(config, config.UserAgent).TargetTcpProxies.Get(
 			config.Project, name).Do()
 		if err != nil {
 			return err

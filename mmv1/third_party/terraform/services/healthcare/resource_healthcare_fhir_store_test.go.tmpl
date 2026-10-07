@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/pubsub"
 	"github.com/hashicorp/terraform-provider-google/google/services/healthcare"
 	"github.com/hashicorp/terraform-provider-google/google/tpgresource"
 	transport_tpg "github.com/hashicorp/terraform-provider-google/google/transport"
@@ -14,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
-func TestAccHealthcareFhirStoreIdParsing(t *testing.T) {
+func TestHealthcareFhirStoreIdParsing(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
@@ -229,7 +230,7 @@ func testAccCheckGoogleHealthcareFhirStoreUpdate(t *testing.T, pubsubTopic strin
 				return err
 			}
 
-			response, err := config.NewHealthcareClient(config.UserAgent).Projects.Locations.Datasets.FhirStores.Get(gcpResourceUri).Do()
+			response, err := healthcare.NewClient(config, config.UserAgent).Projects.Locations.Datasets.FhirStores.Get(gcpResourceUri).Do()
 			if err != nil {
 				return fmt.Errorf("Unexpected failure while verifying 'updated' dataset: %s", err)
 			}

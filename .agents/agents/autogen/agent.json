@@ -1,0 +1,7 @@
+{
+  "name": "autogen",
+  "description": "Generates new Terraform resources and acceptance tests from OpenAPI specifications using the autogen tool.",
+  "configPath": {
+    "relativePathToConfig": "config.yaml"
+  }
+}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/compute"
 )
 
 func TestAccComputeAddress_networkTier(t *testing.T) {
@@ -21,6 +22,24 @@ func TestAccComputeAddress_networkTier(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckNoResourceAttr("google_compute_address.foobar", "labels.%"),
 					resource.TestCheckNoResourceAttr("google_compute_address.foobar", "effective_labels.%"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccComputeAddress_addressId(t *testing.T) {
+	t.Parallel()
+
+	acctest.VcrTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
+		CheckDestroy:             testAccCheckComputeAddressDestroyProducer(t),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccComputeAddress_networkTier(acctest.RandString(t, 10)),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("google_compute_address.foobar", "address_id"),
 				),
 			},
 		},
@@ -726,7 +745,7 @@ resource "google_compute_network" "default" {
 }
 
 resource "google_compute_subnetwork" "foo" {
-  name          = "subnetwork-test-%s"
+  name          = "tf-test-subnetwork-%s"
   ip_cidr_range = "10.0.0.0/16"
   region        = "us-east1"
   network       = google_compute_network.default.self_link
@@ -796,7 +815,7 @@ resource "google_compute_network" "default" {
   auto_create_subnetworks  = false
 }
 resource "google_compute_subnetwork" "foo" {
-  name             = "subnetwork-test-%s"
+  name             = "tf-test-subnetwork-%s"
   ip_cidr_range    = "10.0.0.0/16"
   region           = "us-east1"
   network          = google_compute_network.default.self_link

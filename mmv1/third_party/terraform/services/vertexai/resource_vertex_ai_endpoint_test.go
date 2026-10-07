@@ -6,6 +6,12 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/bigquery"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/compute"
+	"github.com/hashicorp/terraform-provider-google/google/services/kms"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/resourcemanager"
+	"github.com/hashicorp/terraform-provider-google/google/services/servicenetworking"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/vertexai"
 )
 
 func TestAccVertexAIEndpoint_vertexAiEndpointNetwork(t *testing.T) {
@@ -13,8 +19,8 @@ func TestAccVertexAIEndpoint_vertexAiEndpointNetwork(t *testing.T) {
 
 	context := map[string]interface{}{
 		"endpoint_name": fmt.Sprint(acctest.RandInt(t) % 9999999999),
-		"kms_key_name":  acctest.BootstrapKMSKeyInLocation(t, "us-central1").CryptoKey.Name,
-		"network_name":  acctest.BootstrapSharedServiceNetworkingConnection(t, "vertex-ai-endpoint-update-1"),
+		"kms_key_name":  kms.BootstrapKMSKeyInLocation(t, "us-central1").CryptoKey.Name,
+		"network_name":  servicenetworking.BootstrapSharedServiceNetworkingConnection(t, "vertex-ai-endpoint-update-1"),
 		"random_suffix": acctest.RandString(t, 10),
 	}
 
@@ -82,7 +88,7 @@ resource "google_kms_crypto_key_iam_member" "crypto_key" {
 }
 
 resource "google_bigquery_dataset" "bq_dataset" {
-  dataset_id                 = "some_dataset%{endpoint_name}"
+  dataset_id                 = "tf_test_some_dataset%{endpoint_name}"
   friendly_name              = "logging dataset"
   description                = "This is a dataset that requests are logged to"
   location                   = "US"

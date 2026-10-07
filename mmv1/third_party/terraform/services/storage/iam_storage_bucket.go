@@ -4,9 +4,11 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"google.golang.org/api/cloudresourcemanager/v1"
 
+	"github.com/hashicorp/terraform-provider-google/google/registry"
 	"github.com/hashicorp/terraform-provider-google/google/tpgiamresource"
 	"github.com/hashicorp/terraform-provider-google/google/tpgresource"
 	transport_tpg "github.com/hashicorp/terraform-provider-google/google/transport"
@@ -161,7 +163,7 @@ func (u *StorageBucketIamUpdater) SetResourceIamPolicy(policy *cloudresourcemana
 }
 
 func (u *StorageBucketIamUpdater) qualifyBucketUrl(methodIdentifier string) (string, error) {
-	urlTemplate := fmt.Sprintf("{{StorageBasePath}}%s/%s", fmt.Sprintf("b/%s", u.bucket), methodIdentifier)
+	urlTemplate := fmt.Sprintf(transport_tpg.BaseUrl(Product, u.Config)+"%s/%s", fmt.Sprintf("b/%s", u.bucket), methodIdentifier)
 	url, err := tpgresource.ReplaceVars(u.d, u.Config, urlTemplate)
 	if err != nil {
 		return "", err
@@ -179,4 +181,70 @@ func (u *StorageBucketIamUpdater) GetMutexKey() string {
 
 func (u *StorageBucketIamUpdater) DescribeResource() string {
 	return fmt.Sprintf("storage bucket %q", u.GetResourceId())
+}
+
+// StorageBucketIamParentResourceIdentityParser resolves the parent bucket id from import identity.
+func StorageBucketIamParentResourceIdentityParser(d *schema.ResourceData, identity *schema.IdentityData, config *transport_tpg.Config) (string, error) {
+	return tpgiamresource.ParseIamResourceIdentity(d, identity, config, tpgiamresource.IamResourceIdentityConfig{
+		Params: []tpgiamresource.IamIdentityParam{
+			{Key: "bucket", IdentityKey: "bucket"},
+		},
+		UriFormat: "b/%s",
+	})
+}
+
+func StorageBucketIamMemberResource() *schema.Resource {
+	return tpgiamresource.ResourceIamMember(
+		StorageBucketIamSchema,
+		StorageBucketIamUpdaterProducer,
+		StorageBucketIdParseFunc,
+		tpgiamresource.IamCreateTimeOut(20),
+		tpgiamresource.IamWithParentResourceIdentity(StorageBucketIamParentResourceIdentityParser),
+	)
+}
+
+// NewStorageBucketIamMemberListResource returns the list implementation for google_storage_bucket_iam_member.
+func NewStorageBucketIamMemberListResource() list.ListResource {
+	return tpgiamresource.NewIamMemberListResource(
+		"google_storage_bucket_iam_member",
+		StorageBucketIamMemberResource(),
+		StorageBucketIamUpdaterProducer,
+		tpgiamresource.IamMemberListCallConfig{
+			ParentResourceField: "bucket",
+			EnableRoleFilter:    true,
+			EnableMemberFilter:  true,
+		},
+	)
+}
+
+func init() {
+	registry.Schema{
+		Name:        "google_storage_bucket_iam_member",
+		ProductName: "storage",
+		Type:        registry.SchemaTypeIAMResource,
+		Schema:      StorageBucketIamMemberResource(),
+	}.Register()
+	registry.FrameworkListResource{
+		Name:        "google_storage_bucket_iam_member",
+		ProductName: "storage",
+		Func:        NewStorageBucketIamMemberListResource,
+	}.Register()
+	registry.Schema{
+		Name:        "google_storage_bucket_iam_binding",
+		ProductName: "storage",
+		Type:        registry.SchemaTypeIAMResource,
+		Schema:      tpgiamresource.ResourceIamBinding(StorageBucketIamSchema, StorageBucketIamUpdaterProducer, StorageBucketIdParseFunc, tpgiamresource.IamCreateTimeOut(20)),
+	}.Register()
+	registry.Schema{
+		Name:        "google_storage_bucket_iam_policy",
+		ProductName: "storage",
+		Type:        registry.SchemaTypeIAMResource,
+		Schema:      tpgiamresource.ResourceIamPolicy(StorageBucketIamSchema, StorageBucketIamUpdaterProducer, StorageBucketIdParseFunc, tpgiamresource.IamCreateTimeOut(20)),
+	}.Register()
+	registry.Schema{
+		Name:        "google_storage_bucket_iam_policy",
+		ProductName: "storage",
+		Type:        registry.SchemaTypeIAMDataSource,
+		Schema:      tpgiamresource.DataSourceIamPolicy(StorageBucketIamSchema, StorageBucketIamUpdaterProducer),
+	}.Register()
 }

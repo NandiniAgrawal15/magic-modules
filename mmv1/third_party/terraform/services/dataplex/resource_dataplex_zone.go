@@ -11,6 +11,7 @@ import (
 
 	dcl "github.com/hashicorp/terraform-provider-google/google/tpgdclresource"
 
+	"github.com/hashicorp/terraform-provider-google/google/registry"
 	"github.com/hashicorp/terraform-provider-google/google/tpgdclresource"
 	"github.com/hashicorp/terraform-provider-google/google/tpgresource"
 	transport_tpg "github.com/hashicorp/terraform-provider-google/google/transport"
@@ -35,6 +36,7 @@ func ResourceDataplexZone() *schema.Resource {
 		CustomizeDiff: customdiff.All(
 			tpgresource.DefaultProviderProject,
 			tpgresource.SetLabelsDiff,
+			tpgresource.DefaultProviderDeletionPolicy("DELETE"),
 		),
 
 		Schema: map[string]*schema.Schema{
@@ -153,6 +155,9 @@ func ResourceDataplexZone() *schema.Resource {
 				Computed:    true,
 				Description: "Output only. The time when the zone was last updated.",
 			},
+			//UDP schema start
+			"deletion_policy": tpgresource.DeletionPolicySchemaEntry("DELETE"),
+			//UDP schema end
 		},
 	}
 }
@@ -444,9 +449,18 @@ func resourceDataplexZoneRead(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("error setting update_time in state: %s", err)
 	}
 
+	if err := tpgresource.DeletionPolicyReadDefault(d, config, "DELETE"); err != nil {
+		return err
+	}
+
 	return nil
 }
 func resourceDataplexZoneUpdate(d *schema.ResourceData, meta interface{}) error {
+
+	if tpgresource.DeletionPolicyPreUpdate(d, ResourceDataplexZone) {
+		return ResourceDataplexZone().Read(d, meta)
+	}
+
 	config := meta.(*transport_tpg.Config)
 	project, err := tpgresource.GetProject(d, config)
 	if err != nil {
@@ -499,6 +513,13 @@ func resourceDataplexZoneUpdate(d *schema.ResourceData, meta interface{}) error 
 }
 
 func resourceDataplexZoneDelete(d *schema.ResourceData, meta interface{}) error {
+
+	if ok, err := tpgresource.DeletionPolicyPreDelete(d); err != nil {
+		return err
+	} else if ok {
+		return nil
+	}
+
 	config := meta.(*transport_tpg.Config)
 	project, err := tpgresource.GetProject(d, config)
 	if err != nil {
@@ -728,4 +749,13 @@ func flattenDataplexZoneTerraformLabels(v map[string]string, d *schema.ResourceD
 	}
 
 	return transformed
+}
+
+func init() {
+	registry.Schema{
+		Name:        "google_dataplex_zone",
+		ProductName: "dataplex",
+		Type:        registry.SchemaTypeResource,
+		Schema:      ResourceDataplexZone(),
+	}.Register()
 }

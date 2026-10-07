@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
+	_ "github.com/hashicorp/terraform-provider-google/google/services/gemini"
 )
 
 func TestAccGeminiGeminiGcpEnablementSetting_geminiGeminiGcpEnablementSettingBasicExample_update(t *testing.T) {
@@ -52,6 +53,7 @@ resource "google_gemini_gemini_gcp_enablement_setting" "example" {
     labels = {"my_key" = "my_value"}
     enable_customer_data_sharing = true
 	web_grounding_type = "WEB_GROUNDING_FOR_ENTERPRISE"
+	mutations_enabled = true
 }
 `, context)
 }
@@ -63,6 +65,7 @@ resource "google_gemini_gemini_gcp_enablement_setting" "example" {
     labels = {"my_key" = "my_value"}
     enable_customer_data_sharing = false
 	web_grounding_type = "GROUNDING_WITH_GOOGLE_SEARCH"
+	mutations_enabled = false
 }
 `, context)
 }

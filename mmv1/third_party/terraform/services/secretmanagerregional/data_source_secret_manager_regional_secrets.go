@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-provider-google/google/registry"
 	"github.com/hashicorp/terraform-provider-google/google/tpgresource"
 	transport_tpg "github.com/hashicorp/terraform-provider-google/google/transport"
 )
@@ -47,7 +48,7 @@ func dataSourceSecretManagerRegionalRegionalSecretsRead(d *schema.ResourceData, 
 		return err
 	}
 
-	url, err := tpgresource.ReplaceVars(d, config, "{{SecretManagerRegionalBasePath}}projects/{{project}}/locations/{{location}}/secrets")
+	url, err := tpgresource.ReplaceVars(d, config, transport_tpg.BaseUrl(Product, config)+"projects/{{project}}/locations/{{location}}/secrets")
 	if err != nil {
 		return err
 	}
@@ -159,6 +160,7 @@ func flattenSecretManagerRegionalRegionalSecretsSecrets(v interface{}, d *schema
 			"topics":                      flattenSecretManagerRegionalRegionalSecretTopics(original["topics"], d, config),
 			"version_destroy_ttl":         flattenSecretManagerRegionalRegionalSecretVersionDestroyTtl(original["versionDestroyTtl"], d, config),
 			"customer_managed_encryption": flattenSecretManagerRegionalRegionalSecretCustomerManagedEncryption(original["customerManagedEncryption"], d, config),
+			"secret_type":                 flattenSecretManagerRegionalRegionalSecretSecretType(original["secretType"], d, config),
 			"create_time":                 flattenSecretManagerRegionalRegionalSecretCreateTime(original["createTime"], d, config),
 			"name":                        flattenSecretManagerRegionalRegionalSecretName(original["name"], d, config),
 			"project":                     getDataFromName(original["name"], 1),
@@ -173,4 +175,13 @@ func getDataFromName(v interface{}, part int) string {
 	name := v.(string)
 	split := strings.Split(name, "/")
 	return split[part]
+}
+
+func init() {
+	registry.Schema{
+		Name:        "google_secret_manager_regional_secrets",
+		ProductName: "secretmanagerregional",
+		Type:        registry.SchemaTypeDataSource,
+		Schema:      DataSourceSecretManagerRegionalRegionalSecrets(),
+	}.Register()
 }
